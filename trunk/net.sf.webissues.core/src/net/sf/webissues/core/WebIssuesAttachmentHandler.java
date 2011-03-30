@@ -47,7 +47,7 @@ public class WebIssuesAttachmentHandler extends AbstractTaskAttachmentHandler {
                     throws CoreException {
         try {
             WebIssuesClient client = connector.getClientManager().getClient(repository, monitor);
-            int attachmentId = Integer.parseInt(attachmentAttribute.getAttribute(TaskAttribute.ATTACHMENT_ID).getValue());
+            int attachmentId = Integer.parseInt(attachmentAttribute.getValue());
             return client.getAttachmentData(attachmentId, monitor);
         } catch (OperationCanceledException e) {
             throw e;

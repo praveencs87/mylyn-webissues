@@ -150,8 +150,8 @@ public class WebIssuesTaskDataHandler extends AbstractTaskDataHandler {
         doDateAttribute(TaskAttribute.DATE_MODIFICATION, data, changedAttributes, issue.getModifiedDate());
         doUser(client, WebIssuesAttribute.MODIFIED_BY.getTaskKey(), data, changedAttributes, issue.getModifiedUser());
 
-        // This assumes default webissues types are still being used
-        if ("Closed".equals(issue.getAttributeValueByName("Status"))) {
+        // Completed
+        if (client.isCompletedStatus(issue.getAttributeValueByName("Status"))) {
             doDateAttribute(TaskAttribute.DATE_COMPLETION, data, changedAttributes, issue.getModifiedDate());
         }
 
