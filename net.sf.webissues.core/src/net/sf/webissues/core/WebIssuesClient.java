@@ -5,7 +5,10 @@ import java.io.InputStream;
 import java.io.Serializable;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
 
@@ -31,25 +34,27 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.mylyn.commons.net.AbstractWebLocation;
 import org.eclipse.mylyn.commons.net.AuthenticationCredentials;
 import org.eclipse.mylyn.commons.net.AuthenticationType;
+import org.eclipse.mylyn.tasks.core.TaskRepository;
 
 public class WebIssuesClient implements CredentialsProvider, Serializable, Authenticator {
 
     private static final long serialVersionUID = 2277223233454809290L;
 
-    private final static Map<String, Integer> authAttempts = new WeakHashMap<String, Integer>();
+    private transient final static Map<String, Integer> authAttempts = new WeakHashMap<String, Integer>();
 
     protected Client client;
     protected transient String repositoryUrl;
     protected transient AbstractWebLocation location;
 
-    private Exception error; 
+    private Exception error;
+    private List<String> completedStatusList = new ArrayList<String>();
 
-    public WebIssuesClient(HttpClient httpClient, AbstractWebLocation location) throws MalformedURLException {
+    public WebIssuesClient(TaskRepository taskRepository, HttpClient httpClient, AbstractWebLocation location) throws MalformedURLException {
         client = new Client();
-        configure(httpClient, location);
+        configure(taskRepository, httpClient, location);
     }
 
-    void configure(HttpClient httpClient, AbstractWebLocation location) throws MalformedURLException {
+    void configure(TaskRepository taskRepository, HttpClient httpClient, AbstractWebLocation location) throws MalformedURLException {
         this.location = location;
         this.repositoryUrl = location.getUrl();
         if (!this.repositoryUrl.endsWith("/")) {
@@ -60,6 +65,18 @@ public class WebIssuesClient implements CredentialsProvider, Serializable, Authe
         client.setHttpClient(httpClient);
         client.setAuthenticator(this);
         client.setCredentialsProvider(this);
+        String statusListString = taskRepository.getProperty("completedStatusList");
+        if(statusListString != null) {
+            completedStatusList = Arrays.asList(statusListString.toLowerCase().split(","));
+        }
+    }
+
+    public List<String> getCompletedStatusList() {
+        return completedStatusList;
+    }
+    
+    public boolean isCompletedStatus(String statusName) {
+        return completedStatusList.contains(statusName.toLowerCase());
     }
 
     public boolean isConfigured() {

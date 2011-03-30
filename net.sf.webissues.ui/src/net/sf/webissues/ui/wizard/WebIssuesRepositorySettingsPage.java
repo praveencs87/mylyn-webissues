@@ -2,6 +2,7 @@ package net.sf.webissues.ui.wizard;
 
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.StringTokenizer;
 
 import net.sf.webissues.core.WebIssuesClientManager;
 import net.sf.webissues.core.WebIssuesCorePlugin;
@@ -13,12 +14,17 @@ import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.mylyn.tasks.core.TaskRepository;
 import org.eclipse.mylyn.tasks.ui.wizards.AbstractRepositorySettingsPage;
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Text;
 
 public class WebIssuesRepositorySettingsPage extends AbstractRepositorySettingsPage {
 
     private static final String TITLE = "WebIssues Repository Settings";
     private static final String DESCRIPTION = "http://myserver/webissues/";
+    private Text status;
 
     public WebIssuesRepositorySettingsPage(TaskRepository taskRepository) {
         super(TITLE, DESCRIPTION, taskRepository);
@@ -29,12 +35,28 @@ public class WebIssuesRepositorySettingsPage extends AbstractRepositorySettingsP
 
     @Override
     protected void createAdditionalControls(Composite parent) {
+        Label l = new Label(parent, SWT.NONE);
+        l.setText("Complete when status is:");
+        status = new Text(parent, SWT.BORDER | SWT.FILL);
+        status.setLayoutData(new GridData (SWT.FILL, SWT.CENTER, true, false));
+        status.setToolTipText("Comma separated list of status names that signal an Issue is 'Completed'. This is not case sensitive.");
+        String statusList = getRepository().getProperty("completedStatusList");
+        status.setText(statusList == null || statusList.trim().length() == 0 ? "Closed" : statusList);
     }
 
     @Override
     public void applyTo(TaskRepository repository) {
         WebIssuesClientManager clientManager = WebIssuesCorePlugin.getDefault().getConnector().getClientManager();
         clientManager.removeClient(repository);
+        StringBuilder bui  = new StringBuilder();
+        StringTokenizer t = new StringTokenizer(status.getText(), ", ");
+        while(t.hasMoreTokens()) {
+            if(bui.length() > 0) {
+                bui.append(",");
+            }
+            bui.append(t.nextToken());
+        }
+        repository.setProperty("completedStatusList", bui.toString());
         super.applyTo(repository);
     }
 

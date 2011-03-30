@@ -67,7 +67,7 @@ public class WebIssuesClientManager implements IRepositoryListener {
     public synchronized void validate(TaskRepository taskRepository, IProgressMonitor monitor) throws ProtocolException,
                     IOException, HttpException {
         AbstractWebLocation location = taskRepositoryLocationFactory.createWebLocation(taskRepository);
-        WebIssuesClient client = new WebIssuesClient(createHttpClient(location), location);
+        WebIssuesClient client = new WebIssuesClient(taskRepository, createHttpClient(location), location);
         client.connect(monitor);
     }
 
@@ -77,13 +77,13 @@ public class WebIssuesClientManager implements IRepositoryListener {
         WebIssuesClient client = clientByUrl.get(repositoryUrl);
         if (client == null) {
             AbstractWebLocation location = taskRepositoryLocationFactory.createWebLocation(taskRepository);
-            client = new WebIssuesClient(createHttpClient(location), location);
+            client = new WebIssuesClient(taskRepository, createHttpClient(location), location);
             clientByUrl.put(repositoryUrl, client);
             client.connect(monitor);
         } else {
             if (!client.isConfigured()) {
                 AbstractWebLocation location = taskRepositoryLocationFactory.createWebLocation(taskRepository);
-                client.configure(createHttpClient(location), location);
+                client.configure(taskRepository, createHttpClient(location), location);
             }
             if (!client.isOnline()) {
                 if (!client.goOnline(monitor)) {
