@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <site>
-   <feature url="features/net.sf.webissues_0.9.3.201103301358.jar" id="net.sf.webissues" version="0.9.3.201103301358">
+   <feature url="features/net.sf.webissues_0.9.3.201103302151.jar" id="net.sf.webissues" version="0.9.3.201103302151">
       <category name="net.sf.webissues"/>
    </feature>
    <category-def name="net.sf.webissues" label="WebIssues Eclipse Integration"/>
