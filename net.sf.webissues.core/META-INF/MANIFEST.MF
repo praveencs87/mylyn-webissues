@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: WebIssues Mylyn Core
 Bundle-SymbolicName: net.sf.webissues.core;singleton:=true
-Bundle-Version: 0.9.3.qualifier
+Bundle-Version: 0.9.4.qualifier
 Bundle-RequiredExecutionEnvironment: JavaSE-1.6,
  J2SE-1.5
 Bundle-Activator: net.sf.webissues.core.WebIssuesCorePlugin

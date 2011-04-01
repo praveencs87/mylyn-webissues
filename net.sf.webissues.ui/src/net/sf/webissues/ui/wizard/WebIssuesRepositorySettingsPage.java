@@ -40,7 +40,7 @@ public class WebIssuesRepositorySettingsPage extends AbstractRepositorySettingsP
         status = new Text(parent, SWT.BORDER | SWT.FILL);
         status.setLayoutData(new GridData (SWT.FILL, SWT.CENTER, true, false));
         status.setToolTipText("Comma separated list of status names that signal an Issue is 'Completed'. This is not case sensitive.");
-        String statusList = getRepository().getProperty("completedStatusList");
+        String statusList = repository == null ? null : repository.getProperty("completedStatusList");
         status.setText(statusList == null || statusList.trim().length() == 0 ? "Closed" : statusList);
     }
 
