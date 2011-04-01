@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: WebIssues Protocol Library
 Bundle-SymbolicName: net.sf.webissues.api
-Bundle-Version: 0.9.3.qualifier
+Bundle-Version: 0.9.4.qualifier
 Require-Bundle: org.apache.commons.httpclient;visibility:=reexport,
  org.apache.commons.logging;visibility:=reexport,
  org.apache.commons.codec;visibility:=reexport
