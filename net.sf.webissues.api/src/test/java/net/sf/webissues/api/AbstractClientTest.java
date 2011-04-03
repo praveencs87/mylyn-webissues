@@ -1,7 +1,11 @@
 package net.sf.webissues.api;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.URL;
+
+import net.sf.webissues.api.Client.PasswordChangeCallback;
 
 import org.apache.commons.httpclient.HttpException;
 import org.junit.Ignore;
@@ -42,6 +46,24 @@ public class AbstractClientTest {
             public void beginJob(String name, int size) {
                 this.value = 0;
                 System.out.println("Name: " + name + " for " + size);
+            }
+        };
+    }
+    
+    protected PasswordChangeCallback createPasswordChangeCallback() {
+        return new PasswordChangeCallback() {
+            
+            public char[] getNewPassword() {
+                System.out.println("You must change you password, please enter the new one now (just press RETURN to cancel): ");
+                BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+                try {
+                    String newPassword = br.readLine();
+                    return newPassword == null || newPassword.length() == 0 ? null : newPassword.toCharArray();
+                }
+                catch(IOException ioe) {
+                    ioe.printStackTrace();
+                    return null;
+                }
             }
         };
     }

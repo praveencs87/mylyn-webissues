@@ -20,6 +20,7 @@ public class SaveClientTest extends AbstractClientTest {
         Operation op = lct.createOperation();
         Authenticator authenticator2 = lct.createAuthenticator();
         c.setAuthenticator(authenticator2);
+        c.setPasswordChangeCallback(lct.createPasswordChangeCallback());
         c.connect(op);
         dumpClient(c, op);
         File file = new File(new File(System.getProperty("java.io.tmpdir")), "client.ser");

@@ -29,6 +29,16 @@ public class ProtocolException extends Exception {
      */
     public final static int INCORRECT_LOGIN = 302;
     /**
+     * User must change their password (occurs at logon).
+     */
+    public final static int MUST_CHANGE_PASSWORD = 352;
+    /**
+     * The password provided for a password change cannot be used
+     * as it is identical to the current password
+     */
+    public final static int CANNOT_REUSE_PASSWORD = 353;
+    
+    /**
      * Not sent by server, used internally to indicate authentication was
      * cancelled
      */

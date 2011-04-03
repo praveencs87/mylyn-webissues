@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+import org.apache.commons.httpclient.Header;
 import org.apache.commons.httpclient.HttpException;
 import org.apache.commons.httpclient.HttpMethod;
 import org.apache.commons.logging.Log;
@@ -55,8 +56,8 @@ public class Environment implements Serializable {
     /**
      * Get if the client is <i>Online</i>. If this object is reload after
      * serialization, it will be <i>offline</i> until
-     * {@link #goOnline(Client, Authenticator, Operation)} is called. Normally
-     * methods that require access to the server will do this automatically.
+     * {@link #goOnline(Client, Operation)} is called. Normally methods that
+     * require access to the server will do this automatically.
      * 
      * @return online
      */
@@ -222,14 +223,12 @@ public class Environment implements Serializable {
      * environment.
      * 
      * @param client client
-     * @param authenticator authentication
      * @param operation operation callback
      * @throws HttpException on any HTTP error
      * @throws IOException on any I/O error
      * @throws ProtocolException on any protocol error
      */
-    public void goOnline(Client client, Authenticator authenticator, Operation operation) throws HttpException, IOException,
-                    ProtocolException {
+    public void goOnline(Client client, Operation operation) throws HttpException, IOException, ProtocolException {
         if (online) {
             throw new IllegalStateException("Already online");
         }
@@ -239,8 +238,19 @@ public class Environment implements Serializable {
             // Hello
             HttpMethod method = client.doCommand("HELLO");
             try {
-                version = method.getResponseHeader("X-WebIssues-Version").getValue();
-                server = method.getResponseHeader("X-WebIssues-Server").getValue();
+                Header responseHeader = method.getResponseHeader("X-WebIssues-Version");
+                if(responseHeader == null) {
+                    throw new IOException();
+                }
+                version = responseHeader.getValue();
+
+                if (version.startsWith("0.")) {
+                    // Version 0.X+
+                    server = method.getResponseHeader("X-WebIssues-Server").getValue();
+                } else {
+                    // Version 1.0+
+                    server = method.getResponseHeader("Server").getValue();
+                }
                 List<String> row = client.readResponse(method.getResponseBodyAsStream()).iterator().next();
                 name = row.get(1);
                 uuid = row.get(2);
@@ -263,36 +273,73 @@ public class Environment implements Serializable {
 
             // Login
             operation.setName("Authenticating");
-            Authenticator.Credentials credentials = authenticator.getCredentials(client.getUrl());
+            Authenticator.Credentials credentials = client.getAuthenticator().getCredentials(client.getUrl());
             if (credentials == null) {
                 throw new ProtocolException(ProtocolException.AUTHENTICATION_CANCELLED);
             }
             String command = "LOGIN '" + Util.escape(credentials.getUsername()) + "' '"
                             + Util.escape(new String(credentials.getPassword())) + "'";
-            method = client.doCommand(command);
-            try {
-                List<String> row = client.readResponse(method.getResponseBodyAsStream()).iterator().next();
-                userId = Integer.parseInt(row.get(1));
-                access = Access.fromValue(Integer.parseInt(row.get(2)));
-            } finally {
-                operation.progressed(1);
-                method.releaseConnection();
-            }
 
-            // List features
-            operation.setName("Retrieving features");
-            method = client.doCommand("LIST FEATURES");
-            try {
-                for (List<String> response : client.readResponse(method.getResponseBodyAsStream())) {
-                    if (response.get(0).equals("F")) {
-                        features.add(response.get(1));
+            while (true) {
+                try {
+                    method = client.doCommand(command);
+                    try {
+                        List<String> row = client.readResponse(method.getResponseBodyAsStream()).iterator().next();
+                        userId = Integer.parseInt(row.get(1));
+                        if (version.startsWith("0.")) {
+                            // Version 0.X+
+                            access = Access.fromValue(Integer.parseInt(row.get(2)));
+                        } else {
+                            // Version 1.0+
+                            access = Access.fromValue(Integer.parseInt(row.get(3)));
+                        }
+                    } finally {
+                        operation.progressed(1);
+                        method.releaseConnection();
+                    }
+                    break;
+                } catch (ProtocolException pe) {
+                    if (pe.getCode() == ProtocolException.MUST_CHANGE_PASSWORD) {
+                        /* Version 1.0+ supports change password on logon. To support this the
+                         * caller must have set a PasswordChangeCallback
+                         */
+                        if (client.getPasswordChangeCallback() == null) {
+                            throw pe;
+                        }
+                        char[] newPassword = client.getPasswordChangeCallback().getNewPassword();
+                        if (newPassword == null) {
+                            throw pe;
+                        }
+                        command = "LOGIN NEW '" + Util.escape(credentials.getUsername()) + "' '"
+                                        + Util.escape(new String(credentials.getPassword())) + "' '"
+                                        + Util.escape(new String(newPassword)) + "'";
                     } else {
-                        Client.LOG.warn("Unexpected response \"" + response + "\"");
+                        throw pe;
                     }
                 }
-            } finally {
-                operation.progressed(1);
-                method.releaseConnection();
+            }
+
+            // List featureset(1));
+
+            if (version.startsWith("0.")) {
+                // Version 0.X+
+                operation.setName("Retrieving features");
+                method = client.doCommand("LIST FEATURES");
+                try {
+                    for (List<String> response : client.readResponse(method.getResponseBodyAsStream())) {
+                        if (response.get(0).equals("F")) {
+                            features.add(response.get(1));
+                        } else {
+                            Client.LOG.warn("Unexpected response \"" + response + "\"");
+                        }
+                    }
+                } finally {
+                    operation.progressed(1);
+                    method.releaseConnection();
+                }
+            }
+            else {
+                // TODO does 1.0 have any kind of feature list?
             }
 
             operation.setName("Getting types");
