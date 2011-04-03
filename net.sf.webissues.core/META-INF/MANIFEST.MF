@@ -1,0 +1,26 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: WebIssues Mylyn Core
+Bundle-SymbolicName: net.sf.webissues.core;singleton:=true
+Bundle-Version: 0.9.4.qualifier
+Bundle-RequiredExecutionEnvironment: JavaSE-1.6,
+ J2SE-1.5
+Bundle-Activator: net.sf.webissues.core.WebIssuesCorePlugin
+Require-Bundle: org.eclipse.mylyn.commons.core,
+ org.eclipse.mylyn.commons.net,
+ org.eclipse.mylyn.tasks.core,
+ org.eclipse.core.runtime,
+ org.eclipse.core.net,
+ net.sf.webissues.api
+Export-Package: net.sf.webissues.core;
+  uses:="org.eclipse.mylyn.tasks.core,
+   org.apache.commons.httpclient.auth,
+   org.eclipse.core.runtime,
+   org.eclipse.mylyn.tasks.core.data,
+   net.sf.webissues.api,
+   org.eclipse.mylyn.tasks.core.sync,
+   org.apache.commons.httpclient,
+   org.eclipse.mylyn.commons.net,
+   org.osgi.framework"
+Bundle-ActivationPolicy: lazy
+Bundle-Vendor: Brett Smith
