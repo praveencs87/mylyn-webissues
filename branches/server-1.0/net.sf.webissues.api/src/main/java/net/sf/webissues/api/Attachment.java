@@ -3,19 +3,17 @@ package net.sf.webissues.api;
 import java.io.Serializable;
 import java.util.Calendar;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Represents a file attached to an issues.
  */
-public class Attachment implements Serializable, Entity {
+public class Attachment extends AbstractChange implements Serializable, Entity {
 
     private static final long serialVersionUID = 3247541221241784316L;
 
     // Private instance variables
-    private int id;
     private String name;
-    private Calendar createdDate;
-    private User createdUser;
     private long size;
     private String description;
 
@@ -28,7 +26,7 @@ public class Attachment implements Serializable, Entity {
      * @param size the size in bytes of the attachment
      */
     public Attachment(User createdUser, String name, String description, long size) {
-        this.createdUser = createdUser;
+        super(Type.FILE_ADDED, 0, Calendar.getInstance(), createdUser, Calendar.getInstance(), createdUser, null, null, null);
         this.description = description;
         this.name = name;
         this.size = size;
@@ -37,12 +35,10 @@ public class Attachment implements Serializable, Entity {
     /*
      * Constructor used internally.
      */
-    protected Attachment(int id, String name, Calendar createdDate, User createdUser, long size, String description) {
-        super();
-        this.id = id;
+    protected Attachment(int id, String name, Calendar createdDate, User createdUser, Calendar modifiedDate, User modifiedUser,
+                         long size, String description) {
+        super(Type.FILE_ADDED, id, createdDate, createdUser, modifiedDate, modifiedUser, null, null, null);
         this.name = name;
-        this.createdDate = createdDate;
-        this.createdUser = createdUser;
         this.size = size;
         this.description = description;
     }
@@ -66,13 +62,10 @@ public class Attachment implements Serializable, Entity {
             throw new IllegalArgumentException(
                             "Incorrect response. Expected 'A attachmentId issueId 'name' createdDate createdUser size 'description'");
         }
-        return new Attachment(Integer.parseInt(response.get(1)), response.get(3), Util.parseTimestampInSeconds(response.get(4)),
-                        environment.getUsers().get(Integer.parseInt(response.get(5))), Long.parseLong(response.get(6)), response
-                                        .get(7));
-    }
-
-    public int getId() {
-        return id;
+        Calendar date = Util.parseTimestampInSeconds(response.get(4));
+        User user = environment.getUsers().get(Integer.parseInt(response.get(5)));
+        return new Attachment(Integer.parseInt(response.get(1)), response.get(3), date, user, date, user, Long.parseLong(response
+                        .get(6)), response.get(7));
     }
 
     /**
@@ -82,24 +75,6 @@ public class Attachment implements Serializable, Entity {
      */
     public String getName() {
         return name;
-    }
-
-    /**
-     * Get the date the attachment was created.
-     * 
-     * @return created date
-     */
-    public Calendar getCreatedDate() {
-        return createdDate;
-    }
-
-    /**
-     * Get the user that created the attachment.
-     * 
-     * @return user that created attachment
-     */
-    public User getCreatedUser() {
-        return createdUser;
     }
 
     /**
@@ -122,11 +97,23 @@ public class Attachment implements Serializable, Entity {
 
     @Override
     public String toString() {
-        return "Attachment [createdDate=" + Util.formatDateTime(createdDate) + ", createdUser=" + createdUser + ", description="
-                        + description + ", id=" + id + ", name=" + name + ", size=" + size + "]";
+        return "Attachment [name=" + name + ", size=" + size + ", description=" + description + ", toString()=" + super.toString()
+                        + "]";
     }
 
-    protected void setId(int id) {
-        this.id = id;
+    public static Attachment createFromResponse(IssueDetails issueDetails, List<String> response, Environment environment,
+                                                Map<Integer, Change> changeMap) {
+
+        if (response.size() != 5 || !response.get(0).equals("A")) {
+            throw new IllegalArgumentException(
+                            "Incorrect response. Expected 'A fileId 'filename' fileSize fileData fileDescription fileStorage");
+        }
+        int id = Integer.parseInt(response.get(1));
+        Change change = changeMap.get(id);
+        if (change == null) {
+            throw new Error("No change for ID " + id);
+        }
+        return new Attachment(id, response.get(2), change.getCreatedDate(), change.getCreatedUser(), change.getModifiedDate(),
+                        change.getModifiedUser(), Long.parseLong(response.get(3)), response.get(4));
     }
 }

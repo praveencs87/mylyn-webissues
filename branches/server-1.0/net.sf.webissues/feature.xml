@@ -2,7 +2,7 @@
 <feature
       id="net.sf.webissues"
       label="WebIssues Mylyn Connector"
-      version="0.9.4.qualifier"
+      version="0.10.0.qualifier"
       provider-name="Brett Smith">
 
    <description url="http://code.google.com/a/eclipselabs.org/p/mylyn-webissues/">
@@ -214,7 +214,7 @@ litigation.
    </license>
 
    <url>
-      <update url="http://tanktarta.pwp.blueyonder.co.uk/eclipse/net.sf.webissues"/>
+      <update url="https://svn.codespot.com/a/eclipselabs.org/mylyn-webissues/branches/server-1.0/net.sf.webissues.updatesite/"/>
    </url>
 
    <requires>
@@ -237,21 +237,21 @@ litigation.
          id="net.sf.webissues.api"
          download-size="0"
          install-size="0"
-         version="0.9.4.qualifier"
+         version="0.10.0.qualifier"
          unpack="false"/>
 
    <plugin
          id="net.sf.webissues.core"
          download-size="0"
          install-size="0"
-         version="0.9.4.qualifier"
+         version="0.10.0.qualifier"
          unpack="false"/>
 
    <plugin
          id="net.sf.webissues.ui"
          download-size="0"
          install-size="0"
-         version="0.9.4.qualifier"
+         version="0.10.0.qualifier"
          unpack="false"/>
 
 </feature>

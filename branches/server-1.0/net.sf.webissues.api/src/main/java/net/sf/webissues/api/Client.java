@@ -10,10 +10,14 @@ import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.jar.Manifest;
 
+import net.sf.webissues.api.AbstractChange.Type;
+
+import org.apache.commons.httpclient.Header;
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.HttpException;
 import org.apache.commons.httpclient.HttpMethod;
@@ -53,6 +57,20 @@ import org.apache.commons.logging.LogFactory;
  */
 public class Client implements Serializable {
 
+    /**
+     * Callback interface used when the user must change their password on
+     * login.
+     */
+    public interface PasswordChangeCallback {
+        /**
+         * Get the new password to use. Return <code>null</code> to cancel the
+         * password change and abort the login.
+         * 
+         * @return new password
+         */
+        char[] getNewPassword();
+    }
+
     public static final String DATETIME_FORMAT = "yyyy-MM-dd HH:mm";
     public static final String DATEONLY_FORMAT = "yyyy-MM-dd";
 
@@ -66,6 +84,7 @@ public class Client implements Serializable {
         System.setProperty("org.apache.commons.logging.simplelog.showdatetime", "true");
         System.setProperty("org.apache.commons.logging.simplelog.log.httpclient.wire.header", "debug");
         System.setProperty("org.apache.commons.logging.simplelog.log.org.apache.commons.httpclient", "debug");
+        System.setProperty("org.apache.commons.logging.simplelog.log.net.sf.webissues", "debug");
     }
 
     private static final long serialVersionUID = -3644715142860489561L;
@@ -76,8 +95,12 @@ public class Client implements Serializable {
     private URL url;
     private Environment environment;
     private CredentialsProvider credentialsProvider;
+    private int majorProtocolVersion = -1;
+
+    // Private transient variables
     private transient HttpClient httpClient;
     private transient Authenticator authenticator;
+    private transient PasswordChangeCallback passwordChangeCallback;
 
     public Client(HttpClient client) {
         this.httpClient = client;
@@ -85,6 +108,19 @@ public class Client implements Serializable {
 
     public Client() {
         newHttpClient();
+    }
+
+    /**
+     * Set the major protocol version number to use for this connection. A
+     * version of -1 indicates automatic detection (the default). You should not
+     * really need to use anything other than automatic detection, although if
+     * know for certain what version you are using you can. It *may* save an
+     * additional HTTP request, but that would be the only advantage.
+     * 
+     * @param majorProtocolVersion major protocol version.
+     */
+    public final void setServerMajorProtocolVersion(int majorProtocolVersion) {
+        this.majorProtocolVersion = majorProtocolVersion;
     }
 
     /**
@@ -106,7 +142,9 @@ public class Client implements Serializable {
     }
 
     /**
-     * Set the authenticator to use for web-issues server authentication.
+     * Set the authenticator to use for web-issues server authentication. Note,
+     * this field is transient, so if you serialize the client object, you must
+     * set the authenticator again before using it.
      * 
      * @param authenticator authenticator
      */
@@ -115,8 +153,41 @@ public class Client implements Serializable {
     }
 
     /**
+     * Set the callback to use when a password change is requested on login.
+     * Note, this field is transient, so if you serialize the client object, you
+     * must set the callback again before using it.
+     * 
+     * @param callback password change callback
+     */
+    public final void setPasswordChangeCallback(PasswordChangeCallback passwordChangeCallback) {
+        this.passwordChangeCallback = passwordChangeCallback;
+    }
+
+    /**
+     * Get the callback to use when a password change is requested on login.
+     * 
+     * @return password change callback
+     * @see #setP
+     */
+    public final PasswordChangeCallback getPasswordChangeCallback() {
+        return passwordChangeCallback;
+    }
+
+    /**
+     * Get the authenticator to use for web-issues server authentication.
+     * 
+     * @param authenticator authenticator
+     * @see #setAuthenticator(Authenticator)
+     */
+    protected final Authenticator getAuthenticator() {
+        return authenticator;
+    }
+
+    /**
      * Set the credentials provided used for PROXY authentication. Note this is
-     * NOT used for authentication with the webissues server.
+     * NOT used for authentication with the webissues server. Note, this field
+     * is transient, so if you serialize the client object, you must set the
+     * provider again before using it.
      * 
      * @param credentialsProvider credential provider for PROXY authentication
      */
@@ -290,6 +361,7 @@ public class Client implements Serializable {
             public IssueDetails call() throws HttpException, IOException, ProtocolException {
                 HttpMethod method = doCommand("GET DETAILS " + issueId + " 0");
                 IssueDetails issueDetails = null;
+                Map<Integer, Change> changeMap = null;
                 try {
                     for (List<String> response : readResponse(method.getResponseBodyAsStream())) {
                         if (response.get(0).equals("V")) {
@@ -308,18 +380,42 @@ public class Client implements Serializable {
                             if (issueDetails == null) {
                                 throw new Error("Expected issue before comment");
                             }
-                            issueDetails.getComments().add(
-                                Comment.createFromResponse(issueDetails, response, environment.getUsers()));
+                            if (!environment.getVersion().startsWith("0.")) {
+                                // From Version 1.0, Comments are also changes
+                                if (changeMap == null) {
+                                    throw new Error("Expected changes before comment");
+                                }
+                                issueDetails.getComments().add(
+                                    Comment.createFromResponse(issueDetails, response, environment, changeMap));
+                            } else {
+                                issueDetails.getComments().add(Comment.createFromResponse(issueDetails, response, environment));
+                            }
                         } else if (response.get(0).equals("A")) {
                             if (issueDetails == null) {
                                 throw new Error("Expected issue before attachment");
                             }
-                            issueDetails.getAttachments().add(Attachment.createFromResponse(response, environment));
+                            if (!environment.getVersion().startsWith("0.")) {
+                                // From Version 1.0, Attachments are also changes
+                                if (changeMap == null) {
+                                    throw new Error("Expected changes before comment");
+                                }
+                                issueDetails.getAttachments().add(
+                                    Attachment.createFromResponse(issueDetails, response, environment, changeMap));
+                            } else {
+                                issueDetails.getAttachments().add(Attachment.createFromResponse(response, environment));
+                            }
                         } else if (response.get(0).equals("H")) {
                             if (issueDetails == null) {
                                 throw new Error("Expected issue before change");
                             }
-                            issueDetails.getChanges().add(Change.createFromResponse(response, environment.getUsers(), environment));
+                            if (changeMap == null) {
+                                changeMap = new HashMap<Integer, Change>();
+                            }
+                            Change change = Change.createFromResponse(response, environment.getUsers(), environment);
+                            changeMap.put(change.getId(), change);
+                            if(change.getType().equals(Type.VALUE_CHANGED) || change.getType().equals(Type.ISSUE_MOVED) ||  change.getType().equals(Type.ISSUE_RENAMED)) {
+                                issueDetails.getChanges().add(change);
+                            }
                         } else {
                             LOG.warn("Unexpected response \"" + response + "\"");
                         }
@@ -478,7 +574,7 @@ public class Client implements Serializable {
             if (httpClient == null) {
                 throw new IllegalStateException("No HTTP client set and the client needs to go online");
             }
-            environment.goOnline(this, authenticator, operation);
+            environment.goOnline(this, operation);
         }
     }
 
@@ -526,14 +622,44 @@ public class Client implements Serializable {
 
     protected HttpMethod doCommand(Part... parts) throws IOException, HttpException {
         String urlText = url.toExternalForm();
-        if (!urlText.endsWith("/")) {
-            urlText += "/";
+
+        // Version 1
+        if (majorProtocolVersion == 0) {
+            // Version 0
+            if (!urlText.endsWith("/")) {
+                urlText += "/";
+            }
+        } else {
+            while (urlText.endsWith("/")) {
+                urlText = urlText.substring(0, urlText.length() - 1);
+            }
+            urlText += "/server/webissues/handler.php";
         }
+
         PostMethod authpost = new PostMethod(urlText);
         authpost.getParams().setParameter(CredentialsProvider.PROVIDER, credentialsProvider);
         authpost.setRequestEntity(new MultipartRequestEntity(parts, authpost.getParams()));
         try {
             int status = httpClient.executeMethod(authpost);
+            Header responseHeader = authpost.getResponseHeader("X-WebIssues-Version");
+            if (responseHeader == null) {
+                /*
+                 * If current major protocol version is automatic, then retry
+                 * the command using protocol version 0.x. An attempt is made to
+                 * switch back to the original version if there is an error
+                 */
+                if (majorProtocolVersion == -1) {
+                    int oldProtocolVersion = majorProtocolVersion;
+                    majorProtocolVersion = 0;
+                    try {
+                        return doCommand(parts);
+                    } catch (IOException ioe) {
+                        majorProtocolVersion = oldProtocolVersion;
+                        throw ioe;
+                    }
+                }
+                throw new IOException("The URL " + urlText + " does not appear to be a WebIssues server. Is the URL correct?");
+            }
             if (status != 200) {
                 throw new HttpException("HTTP error " + status);
             }

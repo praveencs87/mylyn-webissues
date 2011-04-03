@@ -124,7 +124,7 @@ public class WebIssuesClient implements CredentialsProvider, Serializable, Authe
             if (!client.isConnected()) {
                 connect(monitor);
             } else if (!client.getEnvironment().isOnline()) {
-                client.getEnvironment().goOnline(client, this, new OperationAdapter(monitor));
+                client.getEnvironment().goOnline(client, new OperationAdapter(monitor));
                 error = null;
             }
         } catch (Exception e) {
@@ -166,7 +166,7 @@ public class WebIssuesClient implements CredentialsProvider, Serializable, Authe
 
     private void doUpdate(IProgressMonitor monitor) throws HttpException, IOException, ProtocolException {
         if (!client.getEnvironment().isOnline()) {
-            client.getEnvironment().goOnline(client, this, new OperationAdapter(monitor));
+            client.getEnvironment().goOnline(client, new OperationAdapter(monitor));
         } else {
             client.getEnvironment().reload(client, new OperationAdapter(monitor));
         }

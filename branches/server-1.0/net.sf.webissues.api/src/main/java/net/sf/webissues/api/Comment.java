@@ -2,17 +2,15 @@ package net.sf.webissues.api;
 
 import java.util.Calendar;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Represents a single comment in an {@link IssueDetails} object.
  */
-public class Comment {
+public class Comment extends AbstractChange {
 
-    private int id;
-    private String text;
-    private Calendar createdDate;
-    private User createdUser;
     private final IssueDetails issueDetails;
+    private String text;
 
     /**
      * Constructor.
@@ -22,52 +20,18 @@ public class Comment {
      * @param user user that created comment
      */
     public Comment(IssueDetails issue, String text, User user) {
+        super(Type.COMMENT_ADDED, 0, Calendar.getInstance(), user, Calendar.getInstance(), user, null, null, null);
         this.issueDetails = issue;
         this.text = text;
-        this.createdUser = user;
-        this.createdDate = Calendar.getInstance();
     }
 
     /**
-     * Get the comment ID.
-     * 
-     * @return ID
-     */
-    public int getId() {
-        return id;
-    }
-
-    /**
-     * Get the text of the comment
+     * Get the text of the comment.
      * 
      * @return text
      */
     public String getText() {
         return text;
-    }
-
-    /**
-     * Get the date the comment was created.
-     * 
-     * @return date
-     */
-    public Calendar getCreatedDate() {
-        return createdDate;
-    }
-
-    /**
-     * Get the user that created this comment.
-     * 
-     * @return user
-     */
-    public User getCreatedUser() {
-        return createdUser;
-    }
-
-    @Override
-    public String toString() {
-        return "Comment [createdDate=" + Util.formatDateTime(createdDate) + ", createdUser=" + createdUser + ", id=" + id
-                        + ", text=" + text + "]";
     }
 
     public IssueDetails getIssueDetails() {
@@ -77,21 +41,33 @@ public class Comment {
     /*
      * Internal constructor.
      */
-    Comment(IssueDetails issue, int id, String text, Calendar createdDate, User createdUser) {
-        super();
+    Comment(IssueDetails issue, Change change, String text) {
+        this(issue, change.getId(), text, change.getCreatedDate(), change.getCreatedUser(), change.getModifiedDate(), change
+                        .getModifiedUser());
+    }
+
+    Comment(IssueDetails issue, int id, String text, Calendar createdDate, User createdUser, Calendar modifiedDate, User modfiedUser) {
+        super(Type.COMMENT_ADDED, id, createdDate, createdUser, modifiedDate, modfiedUser, null, null, null);
         this.issueDetails = issue;
-        this.id = id;
         this.text = text;
-        this.createdDate = createdDate;
-        this.createdUser = createdUser;
     }
 
-    static Comment createFromResponse(IssueDetails issueDetails, List<String> response, Users users) {
-        return new Comment(issueDetails, Integer.parseInt(response.get(1)), response.get(5), Util.parseTimestampInSeconds(response
-                        .get(3)), users.get(Integer.parseInt(response.get(4))));
+    static Comment createFromResponse(IssueDetails issueDetails, List<String> response, Environment environment) {
+        Calendar date = Util.parseTimestampInSeconds(response.get(3));
+        User user = environment.getUsers().get(Integer.parseInt(response.get(4)));
+        return new Comment(issueDetails, Integer.parseInt(response.get(1)), response.get(5), date, user, date, user);
     }
 
-    protected void setId(int id) {
-        this.id = id;
+    static Comment createFromResponse(IssueDetails issueDetails, List<String> response, Environment environment,
+                                      Map<Integer, Change> changeMap) {
+        if (response.size() != 3 || !response.get(0).equals("C")) {
+            throw new IllegalArgumentException("Incorrect response. Expected 'C commentId 'comment'");
+        }
+        int id = Integer.parseInt(response.get(1));
+        Change change = changeMap.get(id);
+        if(change == null) {
+            throw new Error("No change for ID " + id);
+        }
+        return new Comment(issueDetails, change, response.get(2));
     }
 }
