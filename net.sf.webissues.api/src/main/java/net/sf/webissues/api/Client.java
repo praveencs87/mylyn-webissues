@@ -73,6 +73,8 @@ public class Client implements Serializable {
 
     public static final String DATETIME_FORMAT = "yyyy-MM-dd HH:mm";
     public static final String DATEONLY_FORMAT = "yyyy-MM-dd";
+    
+    public static boolean DEBUG = true;
 
     /**
      * Protocol version
@@ -80,11 +82,12 @@ public class Client implements Serializable {
     public final static String PROTOCOL_VERSION = "0.7";
 
     static {
+        DEBUG = System.getProperty("wi.debug", String.valueOf(DEBUG)).equals("true");
         System.setProperty("org.apache.commons.logging.Log", "org.apache.commons.logging.impl.SimpleLog");
         System.setProperty("org.apache.commons.logging.simplelog.showdatetime", "true");
-        System.setProperty("org.apache.commons.logging.simplelog.log.httpclient.wire.header", "debug");
-        System.setProperty("org.apache.commons.logging.simplelog.log.org.apache.commons.httpclient", "debug");
-        System.setProperty("org.apache.commons.logging.simplelog.log.net.sf.webissues", "debug");
+        System.setProperty("org.apache.commons.logging.simplelog.log.httpclient.wire.header", DEBUG ? "debug" : "warn");
+        System.setProperty("org.apache.commons.logging.simplelog.log.org.apache.commons.httpclient", DEBUG ? "debug" : "warn");
+        System.setProperty("org.apache.commons.logging.simplelog.log.net.sf.webissues", DEBUG ? "debug" : "warn");
     }
 
     private static final long serialVersionUID = -3644715142860489561L;
@@ -274,7 +277,7 @@ public class Client implements Serializable {
                 List<Integer> changes = new ArrayList<Integer>();
                 for (Attribute attribute : attributes.keySet()) {
                     String value = attributes.get(attribute);
-                    if (!Util.isNullOrBlank(value) && attribute.getType().equals(Attribute.Type.DATETIME)) {
+                    if (!Util.isNullOrBlank(value) && attribute.getType().equals(Attribute.AttributeType.DATETIME)) {
                         if (attribute.isDateOnly()) {
                             value = dateFormat.format(Util.parseTimestamp(value).getTime());
                         } else {
@@ -303,6 +306,39 @@ public class Client implements Serializable {
                     }
                 }
                 return changes;
+            }
+        }, operation);
+    }
+    
+    /**
+     * Move this issue to another folder.
+     * 
+     * @throws IOException on any error
+     * @throws ProtocolException 
+     */
+    public void moveIssue(final int issueId, Operation operation, final int folderId) throws IOException, ProtocolException {
+        doCall(new Call<Boolean>() {
+            public Boolean call() throws HttpException, IOException, ProtocolException {
+                doCommand("MOVE ISSUE " + issueId + " " + folderId);
+                return true;
+            }
+        }, operation);
+    }
+    
+    /**
+     * Delete an issue.
+     * 
+     * @param issueId issue ID
+     * @param operation operation
+     * 
+     * @throws IOException on any error
+     * @throws ProtocolException 
+     */
+    public void deleteIssue(final int issueId, Operation operation) throws IOException, ProtocolException {
+        doCall(new Call<Boolean>() {
+            public Boolean call() throws HttpException, IOException, ProtocolException {
+                doCommand("DELETE ISSUE " + issueId);
+                return true;
             }
         }, operation);
     }
@@ -339,6 +375,46 @@ public class Client implements Serializable {
                 } finally {
                     method.releaseConnection();
                 }
+                return -1;
+            }
+        }, operation);
+    }
+
+    /**
+     * Mark an issue as read.
+     * 
+     * @param issueId issue ID
+     * @param read read
+     * @return change ID or -1 if the change fails
+     * @throws HttpException on HTTP error
+     * @throws IOException on any other IO error
+     * @throws ProtocolException on error return by server or protocol problem
+     */
+    public void setIssueRead(final int issueId, final boolean read, Operation operation) throws HttpException, IOException,
+                    ProtocolException {
+        doCall(new Call<Integer>() {
+            public Integer call() throws HttpException, IOException, ProtocolException {
+                doCommand("SET ISSUE READ " + issueId + " " + (read ? "1" : "0"));
+                return -1;
+            }
+        }, operation);
+    }
+
+    /**
+     * Mark a folder as read.
+     * 
+     * @param folderId folder ID
+     * @param read read
+     * @return change ID or -1 if the change fails
+     * @throws HttpException on HTTP error
+     * @throws IOException on any other IO error
+     * @throws ProtocolException on error return by server or protocol problem
+     */
+    public void setFolderRead(final int folderId, final boolean read, Operation operation) throws HttpException, IOException,
+                    ProtocolException {
+        doCall(new Call<Integer>() {
+            public Integer call() throws HttpException, IOException, ProtocolException {
+                doCommand("SET FOLDER READ " + folderId + " " + (read ? "1" : "0"));
                 return -1;
             }
         }, operation);
@@ -402,7 +478,7 @@ public class Client implements Serializable {
                                 issueDetails.getAttachments().add(
                                     Attachment.createFromResponse(issueDetails, response, environment, changeMap));
                             } else {
-                                issueDetails.getAttachments().add(Attachment.createFromResponse(response, environment));
+                                issueDetails.getAttachments().add(Attachment.createFromResponse(issueDetails, response, environment));
                             }
                         } else if (response.get(0).equals("H")) {
                             if (issueDetails == null) {
@@ -411,7 +487,7 @@ public class Client implements Serializable {
                             if (changeMap == null) {
                                 changeMap = new HashMap<Integer, Change>();
                             }
-                            Change change = Change.createFromResponse(response, environment.getUsers(), environment);
+                            Change change = Change.createFromResponse(issueDetails, response, environment.getUsers(), environment);
                             changeMap.put(change.getId(), change);
                             if(change.getType().equals(Type.VALUE_CHANGED) || change.getType().equals(Type.ISSUE_MOVED) ||  change.getType().equals(Type.ISSUE_RENAMED)) {
                                 issueDetails.getChanges().add(change);
@@ -462,33 +538,32 @@ public class Client implements Serializable {
      * @throws IOException on any other IO error
      * @throws ProtocolException on error return by server or protocol problem
      */
-    public void putAttachmentData(final int issueId, final Attachment attachment, final InputStream inputStream, final long length,
+    public int putAttachmentData(final int issueId, final String name, final String description, final InputStream inputStream, final long length,
                                   final String contentType, Operation operation) throws HttpException, IOException,
                     ProtocolException {
-        doCall(new Call<Object>() {
-            public Object call() throws HttpException, IOException, ProtocolException {
+        return doCall(new Call<Integer>() {
+            public Integer call() throws HttpException, IOException, ProtocolException {
                 // TODO the value of 40 was determined through trial and error.
                 // check
                 // the exact restriction. If this is too long "invalid string"
                 // error is
                 // returned
-                String name = attachment.getName();
-                if (name.length() > 40) {
-                    name = name.substring(0, 40);
+                String nname = name;
+                if (nname.length() > 40) {
+                    nname = nname.substring(0, 40);
                 }
-                name = Util.escape(name);
+                nname = Util.escape(nname);
                 HttpMethod method = doCommand(new Part[] {
-                                new StringPart("command", "ADD ATTACHMENT " + issueId + " '" + name + "' '"
-                                                + Util.escape(attachment.getDescription()) + "'"),
+                                new StringPart("command", "ADD ATTACHMENT " + issueId + " '" + Util.escape(nname) + "' '"
+                                                + Util.escape(description) + "'"),
                                 new FilePart("file", new AttachmentPartSource(inputStream, length)) {
                                 } });
                 try {
                     List<String> response = readResponse(method.getResponseBodyAsStream()).iterator().next();
-                    attachment.setId(Integer.parseInt(response.get(1)));
+                    return Integer.parseInt(response.get(1));
                 } finally {
                     method.releaseConnection();
                 }
-                return null;
             }
         }, operation);
     }
@@ -616,7 +691,7 @@ public class Client implements Serializable {
     }
 
     protected HttpMethod doCommand(String command) throws IOException, HttpException {
-        System.out.println(command);
+        LOG.debug(command);
         return doCommand(new StringPart("command", command));
     }
 
@@ -689,7 +764,7 @@ public class Client implements Serializable {
      */
 
     public static void main(String[] args) {
-        System.out.println("WebIssues Protocol Library (Version " + getVersion() + "). Supports protocol version "
+        LOG.info("WebIssues Protocol Library (Version " + getVersion() + "). Supports protocol version "
                         + PROTOCOL_VERSION);
     }
 

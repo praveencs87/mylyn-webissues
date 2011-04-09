@@ -48,7 +48,7 @@ public class WebIssuesUserSelectorDialog extends ElementListSelectionDialog {
         setTitles();
         List<User> owners = new ArrayList<User>(users);
         if (includeAnyone) {
-            anyone = new User("", "All", Access.NONE);
+            anyone = new User(me.getEnvironment(), "", "All", Access.NONE);
             owners.add(0, anyone);
         }
         setElements(owners.toArray(new User[0]));

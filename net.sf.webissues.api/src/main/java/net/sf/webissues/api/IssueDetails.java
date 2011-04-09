@@ -1,6 +1,7 @@
 package net.sf.webissues.api;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -84,6 +85,22 @@ public class IssueDetails {
      */
     public Collection<Attachment> getAttachments() {
         return attachments;
+    }
+
+    /**
+     * Store the content of an attachment.
+     * 
+     * @param attachment attachment
+     * @param inputStream attachment data
+     * @param operation operation call-back
+     * @throws HttpException on HTTP error
+     * @throws IOException on any other IO error
+     * @throws ProtocolException on error return by server or protocol problem
+     */
+    public void attachmentData(final Attachment attachment, final InputStream inputStream, final long length,
+                                  final String contentType, Operation operation) throws HttpException, IOException,
+                    ProtocolException {
+        attachment.setId(getIssue().getFolder().getProject().getProjects().getEnvironment().getClient().putAttachmentData(getIssue().getId(), attachment.getName(), attachment.getDescription(), inputStream, length, contentType, operation));
     }
 
     @Override

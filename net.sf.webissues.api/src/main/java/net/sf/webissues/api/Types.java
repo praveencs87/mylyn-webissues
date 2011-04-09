@@ -67,11 +67,22 @@ public class Types extends HashMap<Integer, Type> implements Serializable {
                         if (type == null) {
                             throw new Error("Expected type before attribute");
                         }
-                        type.put(attributeId, new Attribute(attributeId, response.get(3), response.get(4)));
+                        type.put(attributeId, new Attribute(type, attributeId, response.get(3), response.get(4)));
                     } else if (response.get(0).equals("T")) {
                         int typeId = Integer.parseInt(response.get(1));
                         Type type = new Type(this, typeId, response.get(2));
                         typeMap.put(typeId, type);
+                    } else if (response.get(0).equals("V")) {
+                        int viewId = Integer.parseInt(response.get(1));
+                        int typeId = Integer.parseInt(response.get(2));
+                        String viewName = response.get(3);
+                        String definition = response.get(4);
+                        boolean userView = response.get(5).equals("1");
+                        Type type = typeMap.get(typeId);
+                        View view = new View(type.getViews(), viewId, viewName);
+                        view.setDefinition(definition);
+                        view.setUserView(userView);
+                        type.getViews().add(view);
                     } else {
                         Client.LOG.warn("Unexpected response \"" + response + "\"");
                     }

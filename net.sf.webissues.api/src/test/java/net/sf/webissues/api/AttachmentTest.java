@@ -25,9 +25,8 @@ public class AttachmentTest {
     @Before
     public void createEnviroment() {
         // Create a fake user
-        user = new User(123, "auser", "Mr User", Access.ADMIN);
-
         environment = new Environment(null);
+        user = new User(environment, 123, "auser", "Mr User", Access.ADMIN);
         environment.getUsers().add(user);
     }
 
@@ -40,7 +39,7 @@ public class AttachmentTest {
         now.set(Calendar.MILLISECOND, 0);
         List<String> row = Arrays.asList(new String[] { "A", "123", "321", "afile.txt", Util.formatTimestampInSeconds(now),
                         String.valueOf(user.getId()), "987", "An attachment" });
-        Attachment attachment = Attachment.createFromResponse(row, environment);
+        Attachment attachment = Attachment.createFromResponse(null, row, environment);
         assertEquals(123, attachment.getId()); 
         System.out.println(Util.formatTimestampInSeconds(attachment.getCreatedDate()));
         assertEquals("afile.txt", attachment.getName());
@@ -56,7 +55,7 @@ public class AttachmentTest {
      */
     @Test(expected = IllegalArgumentException.class)
     public void testResponseWithIncorrectLength() {
-        Attachment.createFromResponse(Arrays.asList(new String[] { "A" }), environment);
+        Attachment.createFromResponse(null, Arrays.asList(new String[] { "A" }), environment);
     }
 
     /**
@@ -65,7 +64,7 @@ public class AttachmentTest {
      */
     @Test(expected = IllegalArgumentException.class)
     public void testResponseWithIncorrectType() {
-        Attachment.createFromResponse(Arrays.asList(new String[] { "Z", "Z", "Z", "Z", "Z", "Z", "Z", "Z" }), environment);
+        Attachment.createFromResponse(null, Arrays.asList(new String[] { "Z", "Z", "Z", "Z", "Z", "Z", "Z", "Z" }), environment);
     }
 
 }

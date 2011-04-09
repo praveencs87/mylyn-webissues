@@ -31,6 +31,31 @@ public class Users extends EntityMap<User> implements Serializable {
     }
 
     /**
+     * Create a new user
+     * 
+     * @param loginId login
+     * @param name name
+     * @param password password
+     * @return user
+     * @throws IOException
+     * @throws HttpException
+     * @throws ProtocolException 
+     */
+    public User createUser(String loginId, String name, char[] password) throws HttpException, IOException, ProtocolException {
+        Client client = environment.getClient();
+        HttpMethod method = client.doCommand("ADD USER '" + Util.escape(loginId) + "' '" + Util.escape(name) + "' '"
+                        + Util.escape(new String(password)));
+        try {
+            List<List<String>> response = client.readResponse(method.getResponseBodyAsStream());
+            User u  = new User(client.getEnvironment(), Integer.parseInt(response.get(0).get(1)), loginId, name, Access.NORMAL);
+            add(u);
+            return u;
+        } finally {
+            method.releaseConnection();
+        }
+    }
+
+    /**
      * Reload all users from the server.
      * 
      * @param operation operation call-back
@@ -99,12 +124,14 @@ public class Users extends EntityMap<User> implements Serializable {
                     if (user == null) {
                         throw new Error("Expected project before folder");
                     }
-                    user.put(project.getId(), new ProjectMembership(user, project, Access.fromValue(Integer.parseInt(response
-                                    .get(3)))));
+                    user.put(project.getId(),
+                        new ProjectMembership(user, project, Access.fromValue(Integer.parseInt(response.get(3)))));
                 } else if (response.get(0).equals("U")) {
                     int userId = Integer.parseInt(response.get(1));
-                    users.put(userId, new User(userId, response.get(2), response.get(3), Access.fromValue(Integer.parseInt(response
-                                    .get(4)))));
+                    users.put(
+                        userId,
+                        new User(environment, userId, response.get(2), response.get(3), Access.fromValue(Integer.parseInt(response
+                                        .get(4)))));
                 } else {
                     Client.LOG.warn("Unexpected response \"" + response + "\"");
                 }

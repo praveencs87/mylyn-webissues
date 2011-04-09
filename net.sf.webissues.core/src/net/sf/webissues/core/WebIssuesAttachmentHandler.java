@@ -92,7 +92,7 @@ public class WebIssuesAttachmentHandler extends AbstractTaskAttachmentHandler {
                 IssueDetails issue = client.getIssueDetails(Integer.parseInt(task.getTaskId()), monitor);
                 Environment environment = client.getEnvironment();
                 User owner = user == null ? environment.getOwnerUser() : environment.getUsers().getUserByLogin(user);
-                Attachment attachment = new Attachment(owner, filename, description, length);
+                Attachment attachment = new Attachment(issue, owner, filename, description, length);
                 InputStream inputStream = source.createInputStream(monitor);
                 client.putAttachmentData(Integer.parseInt(task.getTaskId()), attachment, inputStream, attachment.getSize(),
                     "application/octet-stream", monitor);

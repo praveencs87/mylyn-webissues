@@ -25,6 +25,9 @@ public class WebIssuesRepositorySettingsPage extends AbstractRepositorySettingsP
     private static final String TITLE = "WebIssues Repository Settings";
     private static final String DESCRIPTION = "http://myserver/webissues/";
     private Text status;
+    private Text statusAttributeName;
+    private Text dueDateAttributeName;
+    private Text estimateAttributeName;
 
     public WebIssuesRepositorySettingsPage(TaskRepository taskRepository) {
         super(TITLE, DESCRIPTION, taskRepository);
@@ -42,6 +45,20 @@ public class WebIssuesRepositorySettingsPage extends AbstractRepositorySettingsP
         status.setToolTipText("Comma separated list of status names that signal an Issue is 'Completed'. This is not case sensitive.");
         String statusList = repository == null ? null : repository.getProperty("completedStatusList");
         status.setText(statusList == null || statusList.trim().length() == 0 ? "Closed" : statusList);
+        statusAttributeName = attributeField(parent, "Status Attribute Name:", "The name of the WebIssues attribute that is used for status.", "Status", "statusAttributeName");
+        dueDateAttributeName = attributeField(parent, "Due Date Attribute Name:", "The name of the WebIssues attribute that is used for due date.", "Due Date", "dueDateAttributeName");
+        estimateAttributeName = attributeField(parent, "Estimate Attribute Name:", "The name of the WebIssues attribute that is used for estimated hours.", "Work Hours", "estimateAttributeName");
+    }
+    
+    private Text attributeField(Composite parent, String label, String toolTip, String defaultValue, String name) {
+        Label l = new Label(parent, SWT.NONE);
+        l.setText(label);
+        Text field = new Text(parent, SWT.BORDER | SWT.FILL);
+        field.setLayoutData(new GridData (SWT.FILL, SWT.CENTER, true, false));
+        field.setToolTipText(toolTip);
+        String val = repository == null ? null : repository.getProperty("statusAttributeName");
+        field.setText(val == null || val.trim().length() == 0 ? defaultValue : val);
+        return field;
     }
 
     @Override
@@ -57,6 +74,9 @@ public class WebIssuesRepositorySettingsPage extends AbstractRepositorySettingsP
             bui.append(t.nextToken());
         }
         repository.setProperty("completedStatusList", bui.toString());
+        repository.setProperty("statusAttributeName", statusAttributeName.getText());
+        repository.setProperty("dueDateAttributeName", dueDateAttributeName.getText());
+        repository.setProperty("estimateAttributeName", estimateAttributeName.getText());
         super.applyTo(repository);
     }
 

@@ -151,7 +151,7 @@ class AttributeRow {
         } else {
             Attribute attribute = type.getByName(item);
             if (attribute != null) {
-                switch (attribute.getType()) {
+                switch (attribute.getAttributeType()) {
                     case ENUM:
                         addEnum(attribute, gd);
                         break;

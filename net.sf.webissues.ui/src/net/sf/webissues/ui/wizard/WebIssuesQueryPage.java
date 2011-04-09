@@ -16,17 +16,21 @@ import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import net.sf.webissues.api.Environment;
 import net.sf.webissues.api.ProtocolException;
 import net.sf.webissues.api.Types;
 import net.sf.webissues.api.Util;
+import net.sf.webissues.api.View;
+import net.sf.webissues.api.Views;
 import net.sf.webissues.core.WebIssuesClient;
 import net.sf.webissues.core.WebIssuesClientManager;
 import net.sf.webissues.core.WebIssuesCorePlugin;
 import net.sf.webissues.core.WebIssuesFilterCondition;
-import net.sf.webissues.core.WebIssuesFilterQueryAdapter;
 import net.sf.webissues.core.WebIssuesFilterCondition.Type;
+import net.sf.webissues.core.WebIssuesFilterQueryAdapter;
 import net.sf.webissues.ui.WebIssuesUiPlugin;
 
 import org.apache.commons.httpclient.HttpException;
@@ -61,11 +65,12 @@ import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.progress.IProgressService;
 
 /**
- * Evolved from trac search page. 
+ * Evolved from trac search page.
  * 
  * @author Steffen Pingel
  */
 public class WebIssuesQueryPage extends AbstractRepositoryQueryPage {
+    final static Logger LOG = Logger.getLogger(WebIssuesQueryPage.class.getName());
 
     private static final String TITLE = "Enter query parameters";
     private static final String DESCRIPTION = "If attributes are blank or stale press the Update button.";
@@ -84,6 +89,8 @@ public class WebIssuesQueryPage extends AbstractRepositoryQueryPage {
     List<AttributeRow> rows = new ArrayList<AttributeRow>();
     private Combo type;
     private Types types;
+    private Combo viewCombo;
+    private Views views;
 
     public WebIssuesQueryPage(TaskRepository repository, IRepositoryQuery query) {
         super(TITLE, repository, query);
@@ -128,6 +135,14 @@ public class WebIssuesQueryPage extends AbstractRepositoryQueryPage {
     private synchronized void restoreWidgetValues(WebIssuesFilterQueryAdapter search) {
         updateClient(false);
         type.select(type.indexOf(search.getType().getName()));
+        if (search.getView() != null) {
+            for(int i = 0 ; i < viewCombo.getItemCount(); i++) {
+                if(viewCombo.getItem(i).equals(search.getView().getName())) {
+                    viewCombo.select(i);
+                    break;
+                }
+            }
+        }
         for (WebIssuesFilterCondition condition : search.getConditions()) {
             addRow(condition);
         }
@@ -161,12 +176,14 @@ public class WebIssuesQueryPage extends AbstractRepositoryQueryPage {
 
     protected void createFolderTree(Composite control) {
         Composite group = new Group(control, SWT.NONE);
-        group.setLayout(new GridLayout(2, true));
+        group.setLayout(new GridLayout(2, false));
         GridData gd = new GridData(GridData.FILL_BOTH);
         gd.horizontalSpan = 2;
         group.setLayoutData(gd);
 
         // Type
+        Label l = new Label(group, SWT.NONE);
+        l.setText("Folder Type:");
         type = new Combo(group, 0);
         type.addSelectionListener(new SelectionListener() {
 
@@ -180,9 +197,27 @@ public class WebIssuesQueryPage extends AbstractRepositoryQueryPage {
             }
         });
 
+
+        // View
+        l = new Label(group, SWT.NONE);
+        l.setText("Preset View:");
+        viewCombo = new Combo(group, 0);
+        viewCombo.addSelectionListener(new SelectionListener() {
+
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                View selectedView = views.get(viewCombo.getSelectionIndex());
+                System.out.println(selectedView.getDefinition());
+            }
+
+            @Override
+            public void widgetDefaultSelected(SelectionEvent e) {
+            }
+        });
+
         gd = new GridData(GridData.FILL_BOTH);
-        gd.horizontalSpan = 2;
-        type.setLayoutData(gd);
+        gd.horizontalSpan = 1;
+        viewCombo.setLayoutData(gd);
     }
 
     net.sf.webissues.api.Type getSelectedType() {
@@ -200,9 +235,24 @@ public class WebIssuesQueryPage extends AbstractRepositoryQueryPage {
                 }
             }
         }
+        rebuildViewList();
+    }
+
+    private void rebuildViewList() {
+        viewCombo.removeAll();
+        viewCombo.add("Custom client side query ...");
+        viewCombo.select(0);
+        net.sf.webissues.api.Type type = getSelectedType();
+        views = type == null ? null : type.getViews();
+        if (views != null) {
+            for (net.sf.webissues.api.View view : views.values()) {
+                viewCombo.add(view.getName());
+            }
+        }
     }
 
     void rebuildAttributes() {
+        rebuildViewList();
         rows.clear();
         for (Control child : attributesGrid.getChildren()) {
             child.dispose();
@@ -402,8 +452,7 @@ public class WebIssuesQueryPage extends AbstractRepositoryQueryPage {
                 service.busyCursorWhile(runnable);
             }
         } catch (InvocationTargetException e) {
-            System.err.println("Failed to get client for query.");
-            e.printStackTrace();
+            LOG.log(Level.SEVERE, "Failed to get client for query.", e);
             setErrorMessage(WebIssuesCorePlugin.toStatus(e.getCause(), getTaskRepository()).getMessage());
             return;
         } catch (InterruptedException e) {
@@ -425,7 +474,6 @@ public class WebIssuesQueryPage extends AbstractRepositoryQueryPage {
         sb.append(Util.concatenateUri(repsitoryUrl, "search"));
         sb.append("?");
         sb.append(search.toQueryString());
-        System.out.println("Query url: " + sb.toString());
         return sb.toString();
     }
 
@@ -433,13 +481,16 @@ public class WebIssuesQueryPage extends AbstractRepositoryQueryPage {
 
         // Search
         WebIssuesFilterQueryAdapter search = new WebIssuesFilterQueryAdapter();
-        search.setType(getSelectedType());
+        net.sf.webissues.api.Type selectedType = getSelectedType();
+        search.setType(selectedType);
+        if (viewCombo.getSelectionIndex() > 0 && views != null) {
+            search.setView(views.get(viewCombo.getSelectionIndex() - 1));
+        }
         for (AttributeRow row : rows) {
             if (row.getCondition() != null) {
                 search.addCondition(row.getCondition());
             }
         }
-
         return search;
     }
 

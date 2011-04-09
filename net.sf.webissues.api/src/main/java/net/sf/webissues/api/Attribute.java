@@ -1,16 +1,19 @@
 package net.sf.webissues.api;
 
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
+import org.apache.commons.httpclient.HttpException;
+
 /**
  * Represents an Attribute. The actual properties available will depend on the
- * {@link Type} of data the attribute will hold.
+ * {@link AttributeType} of data the attribute will hold.
  * <p>
  * Some properties are common to all types, such as {@link #isRequired()} and
- * {@link #getDefaultValue()}. Others wil depend on the {@link Type} (see the
+ * {@link #getDefaultValue()}. Others wil depend on the {@link AttributeType} (see the
  * document for the type constants for details).
  */
 public class Attribute implements Entity, NamedEntity, Serializable, Comparable<Attribute> {
@@ -31,11 +34,13 @@ public class Attribute implements Entity, NamedEntity, Serializable, Comparable<
     private boolean dateOnly;
     private boolean membersOnly;
     private Collection<String> options;
+    private AttributeType attributeType;
+    private Client client;
 
     /**
      * The type of data this attribute will hold.
      */
-    public enum Type {
+    public enum AttributeType {
         /**
          * Enumeration of values. The values available can be retrieved using
          * {@link Attribute#getOptions()}.
@@ -134,17 +139,74 @@ public class Attribute implements Entity, NamedEntity, Serializable, Comparable<
     /*
      * Internal constructor.
      */
-    protected Attribute(int id, String name, String definition) {
+    protected Attribute(Type type, int id, String name, String definition) {
         super();
+        this.type = type;
         this.id = id;
         this.name = name;
         this.definition = definition;
         parseDefinition();
     }
+    
+    /**
+     * Delete this attribute.
+     * 
+     * @param operation operation
+     * 
+     * @throws IOException on any error
+     * @throws ProtocolException 
+     */
+    public void delete(Operation operation) throws IOException, ProtocolException {
+        client.doCall(new Call<Boolean>() {
+            public Boolean call() throws HttpException, IOException, ProtocolException {
+                client.doCommand("DELETE ATTRIBUTE " + getId());
+                type.remove(getId());
+                return true;
+            }
+        }, operation);
+    }
+    
+    /**
+     * Rename this attribute.
+     * 
+     * @param operation operation
+     * @param newName new name
+     * 
+     * @throws IOException on any error
+     * @throws ProtocolException 
+     */
+    public void rename(Operation operation, final String newName) throws IOException, ProtocolException {
+        client.doCall(new Call<Boolean>() {
+            public Boolean call() throws HttpException, IOException, ProtocolException {
+                client.doCommand("RENAME ATTRIBUTE " + getId() + " '" + Util.escape(newName) + "'");
+                Attribute.this.name = newName;
+                return true;
+            }
+        }, operation);
+    }
+    
+    /**
+     * Modify the attribute definition.
+     * 
+     * @param operation operation
+     * @param newDefinition new definition
+     * 
+     * @throws IOException on any error
+     * @throws ProtocolException 
+     */
+    public void modify(Operation operation, final String newDefinition) throws IOException, ProtocolException {
+        client.doCall(new Call<Boolean>() {
+            public Boolean call() throws HttpException, IOException, ProtocolException {
+                client.doCommand("MODIFY ATTRIBUTE " + getId() + " '" + Util.escape(newDefinition) + "'");
+                Attribute.this.definition = newDefinition;
+                return true;
+            }
+        }, operation);
+    }
 
     /**
      * Get all of the options available for this attribute. Will be
-     * <code>null</code> unless the type is {@link Type#ENUM}.
+     * <code>null</code> unless the type is {@link AttributeType#ENUM}.
      * 
      * @return options
      */
@@ -163,7 +225,7 @@ public class Attribute implements Entity, NamedEntity, Serializable, Comparable<
 
     /**
      * Get if the user list should contain only members. Only relevant if the
-     * type is {@link Type#USER}.
+     * type is {@link AttributeType#USER}.
      * 
      * @return user list should contain only members
      */
@@ -173,7 +235,7 @@ public class Attribute implements Entity, NamedEntity, Serializable, Comparable<
 
     /**
      * Get the maximum length of the string. Only relevant if the type is
-     * {@link Type#TEXT}.
+     * {@link AttributeType#TEXT}.
      * 
      * @return maximum length
      */
@@ -183,7 +245,7 @@ public class Attribute implements Entity, NamedEntity, Serializable, Comparable<
 
     /**
      * Get if the value should contain only a date (i.e. no time). Only relevant
-     * is the type is {@link Type#DATETIME}.
+     * is the type is {@link AttributeType#DATETIME}.
      * 
      * @return date only
      */
@@ -214,7 +276,16 @@ public class Attribute implements Entity, NamedEntity, Serializable, Comparable<
     }
 
     /**
-     * Get the type of attribute. See {@link Type} for more details.
+     * Get the type of attribute. See {@link AttributeType} for more details.
+     * 
+     * @return attribute type
+     */
+    public AttributeType getAttributeType() {
+        return attributeType;
+    }
+
+    /**
+     * Get the issue type the attribute is attached too.
      * 
      * @return type
      */
@@ -224,7 +295,7 @@ public class Attribute implements Entity, NamedEntity, Serializable, Comparable<
 
     /**
      * Get the maximum number of decimal places allowed. Only applicable if the type is
-     * {@link Type#NUMERIC}. If there is no minimum value, the default is 0 (i.e an
+     * {@link AttributeType#NUMERIC}. If there is no minimum value, the default is 0 (i.e an
      * integer).
      * 
      * @return decimal places
@@ -235,7 +306,7 @@ public class Attribute implements Entity, NamedEntity, Serializable, Comparable<
 
     /**
      * Get the minimum value of the attribute. Only applicable if the type is
-     * {@link Type#NUMERIC}. If there is no minimum value, the default is
+     * {@link AttributeType#NUMERIC}. If there is no minimum value, the default is
      * {@link Long#MIN_VALUE}.
      * 
      * @return minimum value
@@ -246,7 +317,7 @@ public class Attribute implements Entity, NamedEntity, Serializable, Comparable<
 
     /**
      * Get the maximum value of the attribute. Only applicable if the type is
-     * {@link Type#NUMERIC}. If there is no maximum value, the default is
+     * {@link AttributeType#NUMERIC}. If there is no maximum value, the default is
      * {@link Long#MAX_VALUE}.
      * 
      * @return maximum value
@@ -259,7 +330,7 @@ public class Attribute implements Entity, NamedEntity, Serializable, Comparable<
     public String toString() {
         return "Attribute [dateOnly=" + dateOnly + ", defaultValue=" + defaultValue + ", definition=" + definition + ", id=" + id
                         + ", maxLength=" + maxLength + ", maxValue=" + maxValue + ", membersOnly=" + membersOnly + ", minValue="
-                        + minValue + ", name=" + name + ", options=" + options + ", required=" + required + ", type=" + type + "]";
+                        + minValue + ", name=" + name + ", options=" + options + ", required=" + required + ", attributeType=" + attributeType + "]";
     }
 
     @Override
@@ -286,8 +357,8 @@ public class Attribute implements Entity, NamedEntity, Serializable, Comparable<
 
     protected void parseDefinition() {
         List<String> args = Util.parseLine(definition, ' ', '\'');
-        type = Type.valueOf(args.get(0));
+        attributeType = AttributeType.valueOf(args.get(0));
         args.remove(0);
-        type.parse(args, this);
+        attributeType.parse(args, this);
     }
 }
