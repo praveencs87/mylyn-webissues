@@ -17,8 +17,10 @@ import net.sf.webissues.api.User;
 import net.sf.webissues.api.Util;
 import net.sf.webissues.core.WebIssuesFilterCondition;
 import net.sf.webissues.core.WebIssuesFilterCondition.Type;
+import net.sf.webissues.ui.WebIssuesImages;
 import net.sf.webissues.ui.WebIssuesUserSelector;
 
+import org.eclipse.mylyn.internal.provisional.commons.ui.CommonImages;
 import org.eclipse.mylyn.internal.provisional.commons.ui.DatePicker;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -93,14 +95,16 @@ class AttributeRow {
 
         // Delete
 
+        
         final Button removeButton = new Button(parent, SWT.PUSH);
         removeButton.setBackground(value.getDisplay().getSystemColor(SWT.COLOR_LIST_BACKGROUND));
         buttonGridData = new GridData(SWT.NONE, SWT.NONE, false, false);
-        buttonGridData.widthHint = 60;
+        buttonGridData.widthHint = 28;
         buttonGridData.horizontalSpan = 1;
         buttonGridData.verticalAlignment = SWT.TOP;
+        removeButton.setImage(CommonImages.getImage(WebIssuesImages.DELETE));
+        removeButton.setToolTipText("Remove condition");
         removeButton.setLayoutData(buttonGridData);
-        removeButton.setText("Remove");
         removeButton.addSelectionListener(new SelectionAdapter() {
 
             @Override
@@ -225,7 +229,9 @@ class AttributeRow {
 
         final DatePicker dateFrom = new DatePicker(row, SWT.NONE, "", !dateOnly, 0);
         dateFrom.setBackground(value.getDisplay().getSystemColor(SWT.COLOR_LIST_BACKGROUND));
+        dateFrom.setLayoutData(new GridData(SWT.FILL, SWT.NONE, true, false));
         final DatePicker dateTo = new DatePicker(row, SWT.NONE, "", !dateOnly, 23);
+        dateTo.setLayoutData(new GridData(SWT.FILL, SWT.NONE, true, false));
         dateTo.setBackground(value.getDisplay().getSystemColor(SWT.COLOR_LIST_BACKGROUND));
         dateFrom.addPickerSelectionListener(new SelectionAdapter() {
 
@@ -414,6 +420,7 @@ class AttributeRow {
         min.setMinimum((int) attribute.getMinValue());
         min.setMaximum((int) attribute.getMaxValue());
         min.setIncrement(1);
+        min.setLayoutData(new GridData(SWT.FILL, SWT.NONE, true, false));
         final Button range = new Button(row, SWT.CHECK);
         range.setBackground(value.getDisplay().getSystemColor(SWT.COLOR_LIST_BACKGROUND));
         final Spinner max = new Spinner(row, SWT.NONE);
@@ -453,6 +460,7 @@ class AttributeRow {
         max.setMinimum((int) attribute.getMinValue());
         max.setMaximum((int) attribute.getMaxValue());
         max.setIncrement(1);
+        max.setLayoutData(new GridData(SWT.FILL, SWT.NONE, true, false));
         range.addSelectionListener(new SelectionListener() {
 
             @Override

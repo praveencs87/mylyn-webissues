@@ -31,6 +31,7 @@ import net.sf.webissues.core.WebIssuesCorePlugin;
 import net.sf.webissues.core.WebIssuesFilterCondition;
 import net.sf.webissues.core.WebIssuesFilterCondition.Type;
 import net.sf.webissues.core.WebIssuesFilterQueryAdapter;
+import net.sf.webissues.ui.WebIssuesImages;
 import net.sf.webissues.ui.WebIssuesUiPlugin;
 
 import org.apache.commons.httpclient.HttpException;
@@ -39,6 +40,7 @@ import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.jface.dialogs.IDialogSettings;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.operation.IRunnableWithProgress;
+import org.eclipse.mylyn.internal.provisional.commons.ui.CommonImages;
 import org.eclipse.mylyn.tasks.core.IRepositoryQuery;
 import org.eclipse.mylyn.tasks.core.TaskRepository;
 import org.eclipse.mylyn.tasks.ui.wizards.AbstractRepositoryQueryPage;

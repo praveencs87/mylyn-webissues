@@ -32,6 +32,7 @@ public class WebIssuesImages {
 	public static final ImageDescriptor OVERLAY_FEATURES = create(T_VIEW, "overlay-features.gif");
     public static final ImageDescriptor OVERLAY_TASKS = TasksUiImages.TASK;
     public static final ImageDescriptor ALL = create(T_VIEW, "all.gif");
+    public static final ImageDescriptor DELETE = create(T_VIEW, "delete.png");
 
 	private static ImageDescriptor create(String prefix, String name) {
 		try {
