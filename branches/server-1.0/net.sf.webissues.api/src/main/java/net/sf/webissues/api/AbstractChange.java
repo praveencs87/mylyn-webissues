@@ -58,13 +58,15 @@ public abstract class AbstractChange implements Entity {
     private String oldValue;
     private String newValue;
     private Type type;
+    private IssueDetails issueDetails;
 
     /*
      * Internal constructor.
      */
-    protected AbstractChange(Type type, int id, Calendar createdDate, User createdUser, Calendar modifiedDate, User modifiedUser,
+    protected AbstractChange(IssueDetails issueDetails, Type type, int id, Calendar createdDate, User createdUser, Calendar modifiedDate, User modifiedUser,
                              Attribute attribute, String oldValue, String newValue) {
         super();
+        this.issueDetails = issueDetails;
         this.type = type;
         this.id = id;
         this.modifiedDate = modifiedDate;
@@ -78,6 +80,15 @@ public abstract class AbstractChange implements Entity {
 
     public int getId() {
         return id;
+    }
+    
+    /**
+     * Get the issue this change is attached to.
+     * 
+     * @return issue
+     */
+    public IssueDetails getIssueDetails() {
+        return issueDetails;
     }
 
     /**

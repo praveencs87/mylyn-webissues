@@ -16,17 +16,17 @@ public class Change extends AbstractChange {
     /*
      * Internal constructor.
      */
-    protected Change(Type type, int id, Calendar createdDate, User createdUser, Calendar modifiedDate, User modifiedUser,
+    protected Change(IssueDetails issueDetails, Type type, int id, Calendar createdDate, User createdUser, Calendar modifiedDate, User modifiedUser,
                      Attribute attribute, String oldValue, String newValue) {
-        super(type, id, createdDate, createdUser, modifiedDate, modifiedUser, attribute, oldValue, newValue);
+        super(issueDetails, type, id, createdDate, createdUser, modifiedDate, modifiedUser, attribute, oldValue, newValue);
     }
 
     /*
      * Internal constructor.
      */
-    protected Change(int id, Calendar createdDate, User createdUser, Calendar modifiedDate, User modifiedUser, Attribute attribute,
+    protected Change(IssueDetails issueDetails, int id, Calendar createdDate, User createdUser, Calendar modifiedDate, User modifiedUser, Attribute attribute,
                      String oldValue, String newValue) {
-        this(Type.VALUE_CHANGED, id, createdDate, createdUser, modifiedDate, modifiedUser, attribute, oldValue, newValue);
+        this(issueDetails, Type.VALUE_CHANGED, id, createdDate, createdUser, modifiedDate, modifiedUser, attribute, oldValue, newValue);
     }
 
     /**
@@ -43,7 +43,7 @@ public class Change extends AbstractChange {
      * @throws IllegalArgumentException if response is incorrect size or not an
      *         attachment response
      */
-    static Change createFromResponse(List<String> response, Users users, Environment environment) {
+    static Change createFromResponse(IssueDetails issueDetails, List<String> response, Users users, Environment environment) {
         if (environment.getVersion().startsWith("0.")) {
             if (response.size() != 8 || !response.get(0).equals("H")) {
                 throw new IllegalArgumentException(
@@ -56,7 +56,7 @@ public class Change extends AbstractChange {
             }
             User user = users.get(Integer.parseInt(response.get(4)));
             Calendar date = Util.parseTimestampInSeconds(response.get(3));
-            return new Change(Integer.parseInt(response.get(1)), date, user, date, user, attributeObject, response.get(6),
+            return new Change(issueDetails, Integer.parseInt(response.get(1)), date, user, date, user, attributeObject, response.get(6),
                             response.get(7));
         } else {
             // TODO Change needs to support the new fields
@@ -67,7 +67,7 @@ public class Change extends AbstractChange {
             int attributeId = Integer.parseInt(response.get(9));
             Type type = Type.fromCode(Integer.parseInt(response.get(3)));
             Attribute attributeObject = environment.getTypes().getAttribute(attributeId);
-            return new Change(type, Integer.parseInt(response.get(1)), Util.parseTimestampInSeconds(response.get(5)),
+            return new Change(issueDetails, type, Integer.parseInt(response.get(1)), Util.parseTimestampInSeconds(response.get(5)),
                             users.get(Integer.parseInt(response.get(6))), Util.parseTimestampInSeconds(response.get(7)),
                             users.get(Integer.parseInt(response.get(8))), attributeObject, response.get(10), response.get(11));
         }

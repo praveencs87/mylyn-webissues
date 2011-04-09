@@ -21,7 +21,6 @@ import net.sf.webissues.api.Environment;
 import net.sf.webissues.api.Folder;
 import net.sf.webissues.api.Issue;
 import net.sf.webissues.api.IssueDetails;
-import net.sf.webissues.api.Operation;
 import net.sf.webissues.api.ProtocolException;
 
 import org.apache.commons.httpclient.HttpClient;
@@ -34,6 +33,7 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.mylyn.commons.net.AbstractWebLocation;
 import org.eclipse.mylyn.commons.net.AuthenticationCredentials;
 import org.eclipse.mylyn.commons.net.AuthenticationType;
+import org.eclipse.mylyn.tasks.core.ITask;
 import org.eclipse.mylyn.tasks.core.TaskRepository;
 
 public class WebIssuesClient implements CredentialsProvider, Serializable, Authenticator {
@@ -48,6 +48,9 @@ public class WebIssuesClient implements CredentialsProvider, Serializable, Authe
 
     private Exception error;
     private List<String> completedStatusList = new ArrayList<String>();
+    private String statusAttributeName = "Status";
+    private String dueDateAttributeName = "Due Date";
+    private String estimateAttributeName = "Work Hours";
 
     public WebIssuesClient(TaskRepository taskRepository, HttpClient httpClient, AbstractWebLocation location) throws MalformedURLException {
         client = new Client();
@@ -71,6 +74,30 @@ public class WebIssuesClient implements CredentialsProvider, Serializable, Authe
         }
     }
 
+    public String getStatusAttributeName() {
+        return statusAttributeName;
+    }
+
+    public void setStatusAttributeName(String statusAttributeName) {
+        this.statusAttributeName = statusAttributeName;
+    }
+
+    public String getDueDateAttributeName() {
+        return dueDateAttributeName;
+    }
+
+    public void setDueDateAttributeName(String dueDateAttributeName) {
+        this.dueDateAttributeName = dueDateAttributeName;
+    }
+
+    public String getEstimateAttributeName() {
+        return estimateAttributeName;
+    }
+
+    public void setEstimateAttributeName(String estimateAttributeName) {
+        this.estimateAttributeName = estimateAttributeName;
+    }
+
     public List<String> getCompletedStatusList() {
         return completedStatusList;
     }
@@ -92,7 +119,7 @@ public class WebIssuesClient implements CredentialsProvider, Serializable, Authe
 
     public void connect(IProgressMonitor monitor) throws ProtocolException, IOException {
         try {
-            client.connect(new OperationAdapter(monitor));
+            client.connect(new MonitorOperationAdapter(monitor));
         } catch (HttpException e) {
             error = e;
             throw e;
@@ -124,7 +151,7 @@ public class WebIssuesClient implements CredentialsProvider, Serializable, Authe
             if (!client.isConnected()) {
                 connect(monitor);
             } else if (!client.getEnvironment().isOnline()) {
-                client.getEnvironment().goOnline(client, new OperationAdapter(monitor));
+                client.getEnvironment().goOnline(client, new MonitorOperationAdapter(monitor));
                 error = null;
             }
         } catch (Exception e) {
@@ -138,10 +165,10 @@ public class WebIssuesClient implements CredentialsProvider, Serializable, Authe
                     throws HttpException, IOException, ProtocolException {
         try {
             if (newName != null) {
-                client.renameIssue(issueId, newName, new OperationAdapter(monitor));
+                client.renameIssue(issueId, newName, new MonitorOperationAdapter(monitor));
             }
             if (attributes != null) {
-                client.setIssueAttributeValues(issueId, attributes, new OperationAdapter(monitor));
+                client.setIssueAttributeValues(issueId, attributes, new MonitorOperationAdapter(monitor));
             }
         } finally {
             finishOp();
@@ -166,16 +193,16 @@ public class WebIssuesClient implements CredentialsProvider, Serializable, Authe
 
     private void doUpdate(IProgressMonitor monitor) throws HttpException, IOException, ProtocolException {
         if (!client.getEnvironment().isOnline()) {
-            client.getEnvironment().goOnline(client, new OperationAdapter(monitor));
+            client.getEnvironment().goOnline(client, new MonitorOperationAdapter(monitor));
         } else {
-            client.getEnvironment().reload(client, new OperationAdapter(monitor));
+            client.getEnvironment().reload(client, new MonitorOperationAdapter(monitor));
         }
     }
 
     public void putAttachmentData(int issueId, Attachment attachment, InputStream inputStream, long length, String contentType,
                                   IProgressMonitor monitor) throws HttpException, IOException, ProtocolException {
-        try {
-            client.putAttachmentData(issueId, attachment, inputStream, length, contentType, new OperationAdapter(monitor));
+        try { 
+            client.putAttachmentData(issueId, attachment.getName(), attachment.getDescription(), inputStream, length, contentType, new MonitorOperationAdapter(monitor));
         } finally {
             finishOp();
         }
@@ -183,7 +210,7 @@ public class WebIssuesClient implements CredentialsProvider, Serializable, Authe
 
     public int createIssue(Issue issue, IProgressMonitor monitor) throws IOException, ProtocolException {
         try {
-            return client.createIssue(issue, new OperationAdapter(monitor));
+            return client.createIssue(issue, new MonitorOperationAdapter(monitor));
         } finally {
             finishOp();
         }
@@ -192,7 +219,7 @@ public class WebIssuesClient implements CredentialsProvider, Serializable, Authe
     public InputStream getAttachmentData(int attachmentId, IProgressMonitor monitor) throws HttpException, IOException,
                     ProtocolException {
         try {
-            return client.getAttachmentData(attachmentId, new OperationAdapter(monitor));
+            return client.getAttachmentData(attachmentId, new MonitorOperationAdapter(monitor));
         } finally {
             finishOp();
         }
@@ -204,7 +231,7 @@ public class WebIssuesClient implements CredentialsProvider, Serializable, Authe
             throw new IllegalArgumentException("Folder may not be null");
         }
         try {
-            return folder.getIssues(new OperationAdapter(monitor), stamp);
+            return folder.getIssues(new MonitorOperationAdapter(monitor), stamp);
         } finally {
             finishOp();
         }
@@ -213,7 +240,7 @@ public class WebIssuesClient implements CredentialsProvider, Serializable, Authe
     public Collection<Issue> findIssues(long stamp, IProgressMonitor monitor) throws HttpException, ProtocolException,
                     IOException {
         try {
-            return client.findIssues(stamp, new OperationAdapter(monitor));
+            return client.findIssues(stamp, new MonitorOperationAdapter(monitor));
         } finally {
             finishOp();
         }
@@ -222,7 +249,7 @@ public class WebIssuesClient implements CredentialsProvider, Serializable, Authe
     public IssueDetails getIssueDetails(int issueId, IProgressMonitor monitor) throws HttpException, IOException,
                     NumberFormatException, ProtocolException, Error {
         try {
-            return client.getIssueDetails(issueId, new OperationAdapter(monitor));
+            return client.getIssueDetails(issueId, new MonitorOperationAdapter(monitor));
         } finally {
             finishOp();
         }
@@ -230,7 +257,7 @@ public class WebIssuesClient implements CredentialsProvider, Serializable, Authe
 
     public void addComment(Comment comment, IProgressMonitor monitor) throws IOException, ProtocolException {
         try {
-            comment.getIssueDetails().addComment(comment, new OperationAdapter(monitor));
+            comment.getIssueDetails().addComment(comment, new MonitorOperationAdapter(monitor));
         } finally {
             finishOp();
         }
@@ -295,48 +322,13 @@ public class WebIssuesClient implements CredentialsProvider, Serializable, Authe
         authAttempts.clear();
     }
 
-    class OperationAdapter implements Operation {
-
-        private IProgressMonitor monitor;
-
-        public OperationAdapter(IProgressMonitor monitor) {
-            this.monitor = monitor;
+    public void deleteTask(ITask task, IProgressMonitor monitor) throws NumberFormatException, IOException, ProtocolException {
+        try {
+            client.deleteIssue(Integer.parseInt(task.getTaskId()), new MonitorOperationAdapter(monitor));
         }
-
-        public boolean isCancelled() {
-            return monitor != null && monitor.isCanceled();
+        finally {
+            finishOp();
         }
-
-        @Override
-        public void beginJob(String name, int size) {
-            monitor.beginTask(name, size);
-        }
-
-        @Override
-        public void done() {
-            monitor.done();
-        }
-
-        @Override
-        public boolean isCanceled() {
-            return monitor.isCanceled();
-        }
-
-        @Override
-        public void progressed(int value) {
-            monitor.worked(value);
-        }
-
-        @Override
-        public void setCanceled(boolean cancelled) {
-            monitor.setCanceled(cancelled);
-        }
-
-        @Override
-        public void setName(String name) {
-            monitor.setTaskName(name);
-        }
-
     }
 
 }

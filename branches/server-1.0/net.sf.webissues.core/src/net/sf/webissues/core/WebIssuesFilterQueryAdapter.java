@@ -11,6 +11,7 @@ import java.util.StringTokenizer;
 import net.sf.webissues.api.Environment;
 import net.sf.webissues.api.Type;
 import net.sf.webissues.api.Util;
+import net.sf.webissues.api.View;
 
 import org.eclipse.mylyn.tasks.core.IRepositoryQuery;
 
@@ -21,6 +22,7 @@ public class WebIssuesFilterQueryAdapter {
     private String name;
     private Type type;
     private String searchText;
+    private View view;
     private boolean searchComments;
 
     public WebIssuesFilterQueryAdapter() {
@@ -61,8 +63,18 @@ public class WebIssuesFilterQueryAdapter {
                 searchText = value;
             } else if (name.equals("attribute")) {
                 conditions.add(WebIssuesFilterCondition.fromParameterValue(value, environment));
+            } else if (name.equals("viewId")) {
+                view = type.getViews().getByName(value);
             }
         }
+    }
+
+    public View getView() {
+        return view;
+    }
+
+    public void setView(View view) {
+        this.view = view;
     }
 
     public WebIssuesFilterQueryAdapter(Environment environment) {
@@ -92,6 +104,9 @@ public class WebIssuesFilterQueryAdapter {
             buf.append("&searchText=" + Util.urlEncode(searchText));
         }
         buf.append("&typeId=" + type.getId());
+        if (view != null) {
+            buf.append("&viewId=" + view.getId());
+        }
         for (WebIssuesFilterCondition condition : conditions) {
             buf.append("&attribute=" + Util.urlEncode(condition.getExpression()));
         }

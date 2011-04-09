@@ -23,6 +23,15 @@ public abstract class EntityMap<T extends Entity> {
     }
 
     /**
+     * Remove an entity from this list.
+     * 
+     * @param entity entity to from
+     */
+    public void remove(T entity) {
+        entities.remove(entity.getId());
+    }
+
+    /**
      * Get an entity given its ID.
      * 
      * @param id ID of entity

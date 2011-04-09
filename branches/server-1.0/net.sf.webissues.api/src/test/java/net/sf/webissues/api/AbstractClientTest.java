@@ -8,10 +8,14 @@ import java.net.URL;
 import net.sf.webissues.api.Client.PasswordChangeCallback;
 
 import org.apache.commons.httpclient.HttpException;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.junit.Ignore;
 
 @Ignore
 public class AbstractClientTest {
+    
+    final static Log LOG = LogFactory.getLog(AbstractClientTest.class);
 
     private String username;
     private char[] password;
@@ -23,7 +27,7 @@ public class AbstractClientTest {
             private int value;
 
             public void setName(String name) {
-                System.out.println("Name: " + name);
+                LOG.info("Name: " + name);
             }
 
             public void setCanceled(boolean cancelled) {
@@ -32,7 +36,7 @@ public class AbstractClientTest {
 
             public void progressed(int value) {
                 this.value = this.value += value;
-                System.out.println("Progressed to: " + value);
+                LOG.info("Progressed to: " + value);
             }
 
             public boolean isCanceled() {
@@ -45,7 +49,7 @@ public class AbstractClientTest {
 
             public void beginJob(String name, int size) {
                 this.value = 0;
-                System.out.println("Name: " + name + " for " + size);
+                LOG.info("Name: " + name + " for " + size);
             }
         };
     }
@@ -54,7 +58,7 @@ public class AbstractClientTest {
         return new PasswordChangeCallback() {
             
             public char[] getNewPassword() {
-                System.out.println("You must change you password, please enter the new one now (just press RETURN to cancel): ");
+                LOG.info("You must change you password, please enter the new one now (just press RETURN to cancel): ");
                 BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
                 try {
                     String newPassword = br.readLine();
@@ -91,16 +95,17 @@ public class AbstractClientTest {
     }
 
     protected static void dumpClient(Client c, Operation op) throws HttpException, IOException, ProtocolException {
-        System.out.println(c.getEnvironment());
+        LOG.info(c.getEnvironment());
         for (User user : c.getEnvironment().getUsers().values()) {
-            System.out.println("U: " + user);
+            user.reload(op);
+            LOG.info("U: " + user);
         }
         for (Project project : c.getEnvironment().getProjects().values()) {
-            System.out.println("P: " + project);
+            LOG.info("P: " + project);
             for (Folder folder : project.values()) {
-                System.out.println("    F: " + folder);
+                LOG.info("    F: " + folder);
                 for (Issue issue : folder.getIssues(op, 0)) {
-                    System.out.println("        I: " + c.getIssueDetails(issue.getId(), op));
+                    LOG.info("        I: " + issue.getIssueDetails(op));
                 }
             }
         }

@@ -19,6 +19,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -49,9 +50,9 @@ import org.eclipse.core.runtime.OperationCanceledException;
 import org.eclipse.mylyn.commons.net.Policy;
 import org.eclipse.mylyn.tasks.core.ITaskMapping;
 import org.eclipse.mylyn.tasks.core.RepositoryResponse;
+import org.eclipse.mylyn.tasks.core.RepositoryResponse.ResponseKind;
 import org.eclipse.mylyn.tasks.core.RepositoryStatus;
 import org.eclipse.mylyn.tasks.core.TaskRepository;
-import org.eclipse.mylyn.tasks.core.RepositoryResponse.ResponseKind;
 import org.eclipse.mylyn.tasks.core.data.AbstractTaskDataHandler;
 import org.eclipse.mylyn.tasks.core.data.TaskAttachmentMapper;
 import org.eclipse.mylyn.tasks.core.data.TaskAttribute;
@@ -100,8 +101,8 @@ public class WebIssuesTaskDataHandler extends AbstractTaskDataHandler {
 
     TaskData createTaskDataFromIssueDetails(WebIssuesClient client, TaskRepository repository, IssueDetails issueDetails,
                                             IProgressMonitor monitor) throws CoreException {
-        TaskData taskData = new TaskData(getAttributeMapper(repository), WebIssuesCorePlugin.CONNECTOR_KIND, repository
-                        .getRepositoryUrl(), issueDetails.getIssue().getId() + "");
+        TaskData taskData = new TaskData(getAttributeMapper(repository), WebIssuesCorePlugin.CONNECTOR_KIND,
+                        repository.getRepositoryUrl(), issueDetails.getIssue().getId() + "");
         taskData.setVersion(TASK_DATA_VERSION);
         try {
             createDefaultAttributes(taskData, client.getEnvironment(), issueDetails.getIssue());
@@ -117,8 +118,8 @@ public class WebIssuesTaskDataHandler extends AbstractTaskDataHandler {
 
     TaskData createTaskDataFromIssue(WebIssuesClient client, TaskRepository repository, Issue issue, IProgressMonitor monitor)
                     throws CoreException {
-        TaskData taskData = new TaskData(getAttributeMapper(repository), WebIssuesCorePlugin.CONNECTOR_KIND, repository
-                        .getRepositoryUrl(), String.valueOf(issue.getId()));
+        TaskData taskData = new TaskData(getAttributeMapper(repository), WebIssuesCorePlugin.CONNECTOR_KIND,
+                        repository.getRepositoryUrl(), String.valueOf(issue.getId()));
         taskData.setVersion(TASK_DATA_VERSION);
         try {
             createDefaultAttributes(taskData, client.getEnvironment(), issue);
@@ -150,9 +151,21 @@ public class WebIssuesTaskDataHandler extends AbstractTaskDataHandler {
         doDateAttribute(TaskAttribute.DATE_MODIFICATION, data, changedAttributes, issue.getModifiedDate());
         doUser(client, WebIssuesAttribute.MODIFIED_BY.getTaskKey(), data, changedAttributes, issue.getModifiedUser());
 
-        // Completed
-        if (client.isCompletedStatus(issue.getAttributeValueByName("Status"))) {
+        // Dates
+        if (client.isCompletedStatus(issue.getAttributeValueByName(client.getStatusAttributeName()))) {
             doDateAttribute(TaskAttribute.DATE_COMPLETION, data, changedAttributes, issue.getModifiedDate());
+        }
+        if (client.getDueDateAttributeName() != null && !client.getDueDateAttributeName().equals("")) {
+            try {
+                Calendar date = parseDateAttribute(repository, issue, client.getDueDateAttributeName());
+                if (date != null) {
+                    doDateAttribute(TaskAttribute.DATE_DUE, data, changedAttributes, date);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        if (client.getEstimateAttributeName() != null && !client.getEstimateAttributeName().equals("")) {
         }
 
         TaskAttribute typeAttribute = data.getRoot().getAttribute(TaskAttribute.TASK_KIND);
@@ -172,6 +185,26 @@ public class WebIssuesTaskDataHandler extends AbstractTaskDataHandler {
             taskAttribute.setValue(String.valueOf(client.getEnvironment().getOwnerUser().getName()));
             changedAttributes.add(taskAttribute);
         }
+    }
+
+    private static Calendar parseDateAttribute(TaskRepository repository, Issue issue, String attributeName) {
+        Folder folder = issue.getFolder();
+        Type type = folder.getType();
+        Attribute attr = type.getByName(attributeName);
+        if (attr != null && attr.getType().equals(Attribute.AttributeType.DATETIME)) {
+            DateFormat fmt = new SimpleDateFormat(attr.isDateOnly() ? Client.DATEONLY_FORMAT : Client.DATETIME_FORMAT);
+            Date d;
+            try {
+                String val = issue.getAttributeValueByName(attributeName);
+                d = fmt.parse(val);
+            } catch (ParseException e) {
+                return null;
+            }
+            Calendar c = Calendar.getInstance();
+            c.setTime(d);
+            return c;
+        }
+        return null;
     }
 
     public static Set<TaskAttribute> updateTaskData(Set<TaskAttribute> changedAttributes, WebIssuesClient client,
@@ -211,7 +244,7 @@ public class WebIssuesTaskDataHandler extends AbstractTaskDataHandler {
                 TaskAttribute taskAttr = data.getRoot().createAttribute(attributeId);
                 TaskAttributeMetaData metaData = taskAttr.getMetaData();
                 metaData.setKind(TaskAttribute.KIND_DEFAULT);
-                switch (attr.getType()) {
+                switch (attr.getAttributeType()) {
                     case DATETIME:
                         if (attr.isDateOnly()) {
                             metaData.setType(TaskAttribute.TYPE_DATE);
@@ -249,12 +282,12 @@ public class WebIssuesTaskDataHandler extends AbstractTaskDataHandler {
                 }
 
                 // Format the value if it is numeric
-                if (attr.getType().equals(Attribute.Type.NUMERIC) && attr.getDecimalPlaces() > 0) {
+                if (attr.getType().equals(Attribute.AttributeType.NUMERIC) && attr.getDecimalPlaces() > 0) {
                     DecimalFormat fmt = new DecimalFormat();
                     fmt.setMinimumFractionDigits(attr.getDecimalPlaces());
                     fmt.setMaximumFractionDigits(attr.getDecimalPlaces());
                     taskAttr.setValue(fmt.format(Util.isNullOrBlank(value) ? 0d : Double.parseDouble(value)));
-                } else if (attr.getType().equals(Attribute.Type.DATETIME)) {
+                } else if (attr.getType().equals(Attribute.AttributeType.DATETIME)) {
                     DateFormat fmt = new SimpleDateFormat(attr.isDateOnly() ? Client.DATEONLY_FORMAT : Client.DATETIME_FORMAT);
                     try {
                         taskAttr.setValue(value == null ? "" : String.valueOf(fmt.parse(value).getTime()));
@@ -363,6 +396,7 @@ public class WebIssuesTaskDataHandler extends AbstractTaskDataHandler {
             createAttribute(data, WebIssuesAttribute.CREATED_DATE);
             createAttribute(data, WebIssuesAttribute.MODIFIED_DATE);
             createAttribute(data, WebIssuesAttribute.COMPLETION_DATE);
+            createAttribute(data, WebIssuesAttribute.DUE_DATE);
 
             // Special handling for any existing Priority attribute
             Attribute attribute = issue.getFolder().getType().getByName("Priority");
@@ -467,8 +501,8 @@ public class WebIssuesTaskDataHandler extends AbstractTaskDataHandler {
                     return new RepositoryResponse(ResponseKind.TASK_CREATED, id + "");
                 } catch (ProtocolException pe) {
                     if (pe.getCode() == ProtocolException.INVALID_STRING) {
-                        throw new CoreException(new RepositoryStatus(RepositoryStatus.ERROR, WebIssuesCorePlugin.ID_PLUGIN, pe
-                                        .getCode(), "Invalid issue summary. Maximum length of 80"));
+                        throw new CoreException(new RepositoryStatus(RepositoryStatus.ERROR, WebIssuesCorePlugin.ID_PLUGIN,
+                                        pe.getCode(), "Invalid issue summary. Maximum length of 80"));
                     } else {
                         throw pe;
                     }
@@ -535,7 +569,7 @@ public class WebIssuesTaskDataHandler extends AbstractTaskDataHandler {
                 WebIssuesCorePlugin.ID_PLUGIN, key.getName() + " is a required attribute."));
         }
         if (!Util.isNullOrBlank(value)) {
-            if (key.getType().equals(Attribute.Type.NUMERIC)) {
+            if (key.getType().equals(Attribute.AttributeType.NUMERIC)) {
                 if (key.getDecimalPlaces() > 0) {
                     try {
                         double i = Double.parseDouble(value);
@@ -549,10 +583,13 @@ public class WebIssuesTaskDataHandler extends AbstractTaskDataHandler {
                             throw new NumberFormatException();
                         }
                     } catch (NumberFormatException nfe) {
-                        throw new CoreException(RepositoryStatus.createStatus(repository.getRepositoryUrl(), IStatus.ERROR,
-                            WebIssuesCorePlugin.ID_PLUGIN, key.getName() + " must be a floating point number between "
-                                            + key.getMinValue() + " and " + key.getMaxValue() + " with a maximum of "
-                                            + key.getDecimalPlaces() + " decimal places"));
+                        throw new CoreException(RepositoryStatus.createStatus(
+                            repository.getRepositoryUrl(),
+                            IStatus.ERROR,
+                            WebIssuesCorePlugin.ID_PLUGIN,
+                            key.getName() + " must be a floating point number between " + key.getMinValue() + " and "
+                                            + key.getMaxValue() + " with a maximum of " + key.getDecimalPlaces()
+                                            + " decimal places"));
                     }
 
                 } else {
@@ -562,13 +599,14 @@ public class WebIssuesTaskDataHandler extends AbstractTaskDataHandler {
                             throw new NumberFormatException();
                         }
                     } catch (NumberFormatException nfe) {
-                        throw new CoreException(RepositoryStatus.createStatus(repository.getRepositoryUrl(), IStatus.ERROR,
-                            WebIssuesCorePlugin.ID_PLUGIN, key.getName() + " must be an integer number between "
-                                            + key.getMinValue() + " and " + key.getMaxValue()));
+                        throw new CoreException(
+                                        RepositoryStatus.createStatus(repository.getRepositoryUrl(), IStatus.ERROR,
+                                            WebIssuesCorePlugin.ID_PLUGIN, key.getName() + " must be an integer number between "
+                                                            + key.getMinValue() + " and " + key.getMaxValue()));
                     }
                 }
             }
-            if (key.getType().equals(Attribute.Type.TEXT)) {
+            if (key.getType().equals(Attribute.AttributeType.TEXT)) {
                 if (value.length() > key.getMaxLength()) {
                     throw new CoreException(RepositoryStatus.createStatus(repository.getRepositoryUrl(), IStatus.ERROR,
                         WebIssuesCorePlugin.ID_PLUGIN, key.getName() + " exceeds the maximum length of " + key.getMaxLength()));
@@ -579,8 +617,10 @@ public class WebIssuesTaskDataHandler extends AbstractTaskDataHandler {
     }
 
     public static Folder getFolder(TaskData taskData, WebIssuesClient client) {
-        return client.getEnvironment().getProjects().getFolder(
-            Integer.parseInt(taskData.getRoot().getAttribute(WebIssuesAttribute.FOLDER.getTaskKey()).getValue()));
+        return client.getEnvironment()
+                        .getProjects()
+                        .getFolder(
+                            Integer.parseInt(taskData.getRoot().getAttribute(WebIssuesAttribute.FOLDER.getTaskKey()).getValue()));
     }
 
     private String getNewComment(TaskData taskData) {

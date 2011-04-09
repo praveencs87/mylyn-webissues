@@ -1,8 +1,12 @@
 package net.sf.webissues.api;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
+
+import org.apache.commons.httpclient.HttpException;
 
 /**
  * Represents the main body of an issue. This is made up of a small number of
@@ -22,9 +26,11 @@ public class Issue extends HashMap<Attribute, String> implements Entity, NamedEn
     private User createdUser;
     private Calendar modifiedDate;
     private User modifiedUser;
-    private final Folder folder;
+    private Folder folder;
 
     private long stamp;
+
+    private boolean read;
 
     /**
      * Constructor.
@@ -55,11 +61,47 @@ public class Issue extends HashMap<Attribute, String> implements Entity, NamedEn
     }
 
     protected static Issue createFromResponse(List<String> response, Environment environment) {
+        System.err.println(response);
         int folderId = Integer.parseInt(response.get(2));
         return new Issue(Integer.parseInt(response.get(1)), Long.parseLong(response.get(4)), response.get(3), Util
                         .parseTimestampInSeconds(response.get(5)), environment.getUsers().get(Integer.parseInt(response.get(6))),
                         Util.parseTimestampInSeconds(response.get(7)), environment.getUsers()
                                         .get(Integer.parseInt(response.get(8))), environment.getProjects().getFolder(folderId));
+    }
+    
+    /**
+     * Delete this issue.
+     * 
+     * @param operation operation
+     * @throws ProtocolException 
+     * @throws IOException 
+     */
+    public void delete(Operation operation) throws IOException, ProtocolException {
+        getFolder().getProject().getProjects().getEnvironment().getClient().deleteIssue(getId(), operation);
+    }
+    
+    /**
+     * Rename this issue.
+     * 
+     * @param operation operation
+     * @throws ProtocolException 
+     * @throws IOException 
+     */
+    public void rename(String newName, Operation operation) throws IOException, ProtocolException {
+        getFolder().getProject().getProjects().getEnvironment().getClient().renameIssue(getId(), newName, operation);
+        this.name = newName;
+    }
+    
+    /**
+     * Move this issue to another folder
+     * 
+     * @param operation operation
+     * @throws ProtocolException 
+     * @throws IOException 
+     */
+    public void moveTo(Folder newFolder, Operation operation) throws IOException, ProtocolException {
+        getFolder().getProject().getProjects().getEnvironment().getClient().moveIssue(getId(), operation, newFolder.getId());
+        this.folder = newFolder;
     }
 
     /**
@@ -129,7 +171,7 @@ public class Issue extends HashMap<Attribute, String> implements Entity, NamedEn
     public String toString() {
         return "Issue [id=" + id + ", name=" + name + ", stamp=" + stamp + ", folder=" + folder + ", createdDate=" + createdDate
                         + ", createdUser=" + createdUser + ", modifiedDate=" + modifiedDate + ", modifiedUser=" + modifiedUser
-                        + "]";
+                        + ", read=" + read + "]";
     }
 
     /**
@@ -154,5 +196,36 @@ public class Issue extends HashMap<Attribute, String> implements Entity, NamedEn
      */
     public long getStamp() {
         return stamp;
+    }
+    
+    /**
+     * Set the 'read' status of the usses
+     * 
+     * @param operation operation
+     * @param read read
+     * 
+     * @throws IOException on any error
+     * @throws ProtocolException 
+     */
+    public void setRead(Operation operation, boolean read) throws IOException, ProtocolException {
+        getFolder().getProject().getProjects().getEnvironment().getClient().setFolderRead(getId(), read, operation);
+        this.read = read;
+    }
+
+    /**
+     * Get the issue details.
+     * 
+     * @param op operations
+     * @return details
+     * @throws ProtocolException 
+     * @throws IOException 
+     * @throws HttpException 
+     */
+    public IssueDetails getIssueDetails(Operation op) throws HttpException, IOException, ProtocolException {
+        return getFolder().getProject().getProjects().getEnvironment().getClient().getIssueDetails(getId(), op);
+    }
+
+    protected void setRead(boolean read) {
+        this.read = read;        
     }
 }

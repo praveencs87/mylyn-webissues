@@ -45,6 +45,10 @@ public enum WebIssuesAttribute {
      */
     COMPLETION_DATE("Completion date:", TaskAttribute.DATE_COMPLETION, TaskAttribute.TYPE_DATE, Flag.READ_ONLY),
     /**
+     * Due date
+     */
+    DUE_DATE("Due date:", TaskAttribute.DATE_DUE, TaskAttribute.TYPE_DATE, Flag.READ_ONLY),
+    /**
      * Type
      */
     TYPE("Type:", TaskAttribute.TASK_KIND, TaskAttribute.TYPE_SHORT_TEXT, Flag.ATTRIBUTE, Flag.READ_ONLY),

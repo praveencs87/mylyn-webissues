@@ -27,4 +27,27 @@
             id="net.sf.webissues.ui.pageFactory">
       </pageFactory>
    </extension>
+   
+   <extension point="org.eclipse.ui.popupMenus">
+      <viewerContribution
+            id="org.eclipse.mylyn.tasklist.ui.viewerContribution"
+            targetID="org.eclipse.mylyn.tasks.ui.views.tasks">
+            <action
+               class="net.sf.webissues.ui.actions.DeleteIssueAction"
+               definitionId="org.eclipse.ui.file.delete"
+               enablesFor="*"
+               id="net.sf.webissues.ui.actions.delete"
+               label="%DeleteIssueAction.label"
+               menubarPath="repository"
+               tooltip="%DeleteIssueAction.tooltip">
+            <enablement>
+                  <not>
+                     <objectClass
+                           name="org.eclipse.mylyn.internal.tasks.core.LocalTask">
+                     </objectClass>
+                  </not>
+            </enablement>
+         </action>
+         </viewerContribution>
+      </extension>
 </plugin>

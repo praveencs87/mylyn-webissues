@@ -1,6 +1,9 @@
 package net.sf.webissues.api;
 
+import java.io.IOException;
 import java.io.Serializable;
+
+import org.apache.commons.httpclient.HttpException;
 
 /**
  * Represents a single Project. A project consists of many {@link Folder}s.
@@ -25,6 +28,40 @@ public class Project extends EntityMap<Folder> implements Serializable, NamedEnt
         this.id = id;
         this.name = name;
         this.projects = projects;
+    }
+    
+    /**
+     * Rename this project.
+     * 
+     * @throws IOException on any error
+     * @throws ProtocolException 
+     */
+    public void rename(Operation operation, final String newName) throws IOException, ProtocolException {
+        final Client client = getProjects().getEnvironment().getClient();
+        client.doCall(new Call<Boolean>() {
+            public Boolean call() throws HttpException, IOException, ProtocolException {
+                client.doCommand("RENAME PROJECT " + id + " '" + Util.escape(newName) + "'");
+                Project.this.name = newName;
+                return true;
+            }
+        }, operation);
+    }
+    
+    /**
+     * Delete this project.
+     * 
+     * @throws IOException on any error
+     * @throws ProtocolException 
+     */
+    public void delete(Operation operation) throws IOException, ProtocolException {
+        final Client client = getProjects().getEnvironment().getClient();
+        client.doCall(new Call<Boolean>() {
+            public Boolean call() throws HttpException, IOException, ProtocolException {
+                client.doCommand("DELETE PROJECT " + id);
+                getProjects().remove(Project.this);
+                return true;
+            }
+        }, operation);
     }
 
     /**

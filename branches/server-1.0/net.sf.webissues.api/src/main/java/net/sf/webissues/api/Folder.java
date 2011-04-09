@@ -37,6 +37,50 @@ public class Folder implements Serializable, Entity, NamedEntity {
     }
 
     /**
+     * Delete this folder.
+     * 
+     * @throws IOException on any error
+     * @throws ProtocolException
+     */
+    public void delete(Operation operation) throws IOException, ProtocolException {
+        client.doCall(new Call<Boolean>() {
+            public Boolean call() throws HttpException, IOException, ProtocolException {
+                client.doCommand("DELETE FOLDER " + id);
+                project.remove(Folder.this);
+                return true;
+            }
+        }, operation);
+    }
+
+    /**
+     * Rename this folder.
+     * 
+     * @throws IOException on any error
+     * @throws ProtocolException
+     */
+    public void rename(Operation operation, final String newName) throws IOException, ProtocolException {
+        client.doCall(new Call<Boolean>() {
+            public Boolean call() throws HttpException, IOException, ProtocolException {
+                client.doCommand("RENAME FOLDER " + id + " '" + Util.escape(newName) + "'");
+                Folder.this.name = newName;
+                return true;
+            }
+        }, operation);
+    }
+
+    /**
+     * Set the 'read' status of the folder
+     * 
+     * @param operation operation
+     * @param read read
+     * @throws IOException on any error
+     * @throws ProtocolException
+     */
+    public void setRead(Operation operation, boolean read) throws IOException, ProtocolException {
+        client.setFolderRead(getId(), read, operation);
+    }
+
+    /**
      * Get the project this folder belongs to.
      * 
      * @return project
@@ -61,7 +105,6 @@ public class Folder implements Serializable, Entity, NamedEntity {
         return client.doCall(new Call<Collection<Issue>>() {
             public Collection<Issue> call() throws HttpException, IOException, ProtocolException {
                 Map<Integer, Issue> issues = new HashMap<Integer, Issue>();
-                System.out.println("Finding issues changed since stamp " + stamp);
                 HttpMethod method = client.doCommand("LIST ISSUES " + id + " " + stamp);
                 try {
                     for (List<String> response : client.readResponse(method.getResponseBodyAsStream())) {
@@ -80,8 +123,31 @@ public class Folder implements Serializable, Entity, NamedEntity {
                                 throw new Error("Unexpected folderId");
                             }
                             issues.put(issue.getId(), issue);
+                        } else if (response.get(0).equals("F")) {
+                            // We already have this
                         } else {
-                            Client.LOG.warn("Unexpected response \"" + response + "\"");
+                            Client.LOG.warn("Unexpected issues response \"" + response + "\"");
+                        }
+                    }
+                } finally {
+                    method.releaseConnection();
+                }
+
+                // States
+                method = client.doCommand("LIST STATES " + stamp);
+                try {
+                    for (List<String> response : client.readResponse(method.getResponseBodyAsStream())) {
+                        if (response.get(0).equals("S")) {
+                            int stateId = Integer.parseInt(response.get(1));
+                            int issueId = Integer.parseInt(response.get(2));
+                            int readId = Integer.parseInt(response.get(3));
+                            Issue issue  = issues.get(issueId);
+                            if (issue == null) {
+                                throw new Error("Expected issue for " + issueId + " before state");
+                            }
+                            issue.setRead(readId == 1);
+                        } else {
+                            Client.LOG.warn("Unexpected states response \"" + response + "\"");
                         }
                     }
                 } finally {

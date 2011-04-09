@@ -32,6 +32,29 @@ public class Projects extends EntityMap<Project> implements Serializable {
     }
 
     /**
+     * Create a new project
+     * 
+     * @param name name
+     * @return project
+     * @throws IOException
+     * @throws HttpException
+     * @throws ProtocolException 
+     */
+    public Project createProject(String name) throws HttpException, IOException, ProtocolException {
+        final Client client = environment.getClient();
+        HttpMethod method = client.doCommand("ADD PROJECT '" + Util.escape(name) + "'");
+        try {
+            List<List<String>> response = client.readResponse(method.getResponseBodyAsStream());
+            int id = Integer.parseInt(response.get(0).get(1));
+            Project proj = new Project(this, id, name);
+            add(proj);
+            return proj;
+        } finally {
+            method.releaseConnection();
+        }
+    }
+
+    /**
      * Convenience method to find a {@link Folder} with the given ID in one of
      * the projects contained in this map.
      * 
@@ -78,6 +101,7 @@ public class Projects extends EntityMap<Project> implements Serializable {
         HttpMethod method = client.doCommand("LIST PROJECTS");
         try {
             Map<Integer, Project> projects = new HashMap<Integer, Project>();
+            Map<Integer, Folder> folders = new HashMap<Integer, Folder>();
             for (List<String> response : client.readResponse(method.getResponseBodyAsStream())) {
                 if (response.get(0).equals("F")) {
                     int projectId = Integer.parseInt(response.get(2));
@@ -87,12 +111,30 @@ public class Projects extends EntityMap<Project> implements Serializable {
                     }
                     int folderId = Integer.parseInt(response.get(1));
                     Type type = client.getEnvironment().getTypes().get(Integer.parseInt(response.get(4)));
-                    project.add(new Folder(client, project, folderId, response.get(3), type, Integer.parseInt(response.get(5))));
+                    Folder folder = new Folder(client, project, folderId, response.get(3), type, Integer.parseInt(response.get(5)));
+                    project.add(folder);
+                    folders.put(folderId, folder);
                 } else if (response.get(0).equals("P")) {
                     int projectId = Integer.parseInt(response.get(1));
                     projects.put(projectId, new Project(this, projectId, response.get(2)));
+                } else if (response.get(0).equals("A")) {
+                    int alertId = Integer.parseInt(response.get(1));
+                    int folderId = Integer.parseInt(response.get(2));
+                    int viewId = Integer.parseInt(response.get(3));
+                    boolean email= response.get(4).equals("1");
+                    Folder folder = folders.get(folderId);
+                    View view = folder.getType().getViews().get(viewId);
+                    Alert alert = new Alert(alertId, view, folder, email);
+                    view.add(alert);
                 } else {
-                    Client.LOG.warn("Unexpected response \"" + response + "\"");
+                    /*
+                     * 
+        $query = 'SELECT alert_id, folder_id, view_id, alert_email'
+            . ' FROM {alerts}'
+            . ' WHERE user_id = %d';
+
+                     */
+                    Client.LOG.warn("Unexpected project list response \"" + response + "\"");
                 }
             }
             clear();

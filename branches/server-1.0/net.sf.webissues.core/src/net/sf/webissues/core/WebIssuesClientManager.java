@@ -19,6 +19,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Logger;
 
 import net.sf.webissues.api.ProtocolException;
 
@@ -30,10 +31,12 @@ import org.apache.commons.httpclient.cookie.CookiePolicy;
 import org.apache.commons.httpclient.util.IdleConnectionTimeoutThread;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.mylyn.commons.core.StatusHandler;
 import org.eclipse.mylyn.commons.net.AbstractWebLocation;
 import org.eclipse.mylyn.commons.net.WebUtil;
+import org.eclipse.mylyn.internal.tasks.core.TaskRepositoryManager;
 import org.eclipse.mylyn.tasks.core.IRepositoryListener;
 import org.eclipse.mylyn.tasks.core.TaskRepository;
 import org.eclipse.mylyn.tasks.core.TaskRepositoryLocationFactory;
@@ -44,6 +47,8 @@ import org.eclipse.mylyn.tasks.core.TaskRepositoryLocationFactory;
  * @author Steffen Pingel
  */
 public class WebIssuesClientManager implements IRepositoryListener {
+    final static Logger LOG = Logger.getLogger(WebIssuesClientManager.class.getName());
+
     private static IdleConnectionTimeoutThread idleConnectionTimeoutThread = new IdleConnectionTimeoutThread();
     private static MultiThreadedHttpConnectionManager connectionManager = new MultiThreadedHttpConnectionManager();
 
@@ -87,7 +92,7 @@ public class WebIssuesClientManager implements IRepositoryListener {
             }
             if (!client.isOnline()) {
                 if (!client.goOnline(monitor)) {
-                    System.err.println("Failed to go back online");
+                    LOG.severe("Failed to go back online");
                     client.getException().printStackTrace();
                 }
             }

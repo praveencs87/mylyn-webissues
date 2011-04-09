@@ -1,15 +1,17 @@
 package net.sf.webissues.api;
 
+import java.io.IOException;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
+
+import org.apache.commons.httpclient.HttpException;
 
 /**
  * Represents a single comment in an {@link IssueDetails} object.
  */
 public class Comment extends AbstractChange {
 
-    private final IssueDetails issueDetails;
     private String text;
 
     /**
@@ -20,8 +22,7 @@ public class Comment extends AbstractChange {
      * @param user user that created comment
      */
     public Comment(IssueDetails issue, String text, User user) {
-        super(Type.COMMENT_ADDED, 0, Calendar.getInstance(), user, Calendar.getInstance(), user, null, null, null);
-        this.issueDetails = issue;
+        super(issue, Type.COMMENT_ADDED, 0, Calendar.getInstance(), user, Calendar.getInstance(), user, null, null, null);
         this.text = text;
     }
 
@@ -34,10 +35,6 @@ public class Comment extends AbstractChange {
         return text;
     }
 
-    public IssueDetails getIssueDetails() {
-        return issueDetails;
-    }
-
     /*
      * Internal constructor.
      */
@@ -47,9 +44,47 @@ public class Comment extends AbstractChange {
     }
 
     Comment(IssueDetails issue, int id, String text, Calendar createdDate, User createdUser, Calendar modifiedDate, User modfiedUser) {
-        super(Type.COMMENT_ADDED, id, createdDate, createdUser, modifiedDate, modfiedUser, null, null, null);
-        this.issueDetails = issue;
+        super(issue, Type.COMMENT_ADDED, id, createdDate, createdUser, modifiedDate, modfiedUser, null, null, null);
         this.text = text;
+    }
+    
+    /**
+     * Delete this comment.
+     * 
+     * @throws IOException on any error
+     * @throws ProtocolException 
+     */
+    public void delete(Operation operation) throws IOException, ProtocolException {
+        final Client client = getClient();
+        client.doCall(new Call<Boolean>() {
+            public Boolean call() throws HttpException, IOException, ProtocolException {
+                client.doCommand("DELETE COMMENT " + getId());
+                return true;
+            }
+        }, operation);
+    }
+    
+    /**
+     * Edit this comment text.
+     * 
+     * @param operation operation
+     * @param newText new comment text
+     * @throws IOException on any error
+     * @throws ProtocolException 
+     */
+    public void edit(Operation operation, final String newText) throws IOException, ProtocolException {
+        final Client client = getClient();
+        client.doCall(new Call<Boolean>() {
+            public Boolean call() throws HttpException, IOException, ProtocolException {
+                client.doCommand("EDIT COMMENT " + getId() + " '" + Util.escape(newText) + "'");
+                return true;
+            }
+        }, operation);
+    }
+
+    private Client getClient() {
+        final Client client = getIssueDetails().getIssue().getFolder().getProject().getProjects().getEnvironment().getClient();
+        return client;
     }
 
     static Comment createFromResponse(IssueDetails issueDetails, List<String> response, Environment environment) {

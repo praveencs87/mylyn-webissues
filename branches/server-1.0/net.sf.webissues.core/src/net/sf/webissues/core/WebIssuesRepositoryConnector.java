@@ -28,8 +28,12 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.StringTokenizer;
 import java.util.TimeZone;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
+import net.sf.webissues.api.Access;
 import net.sf.webissues.api.Attribute;
 import net.sf.webissues.api.Client;
 import net.sf.webissues.api.Folder;
@@ -39,12 +43,16 @@ import net.sf.webissues.api.ProtocolException;
 import net.sf.webissues.api.Util;
 
 import org.apache.commons.httpclient.HttpException;
+import org.eclipse.core.internal.runtime.Log;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.mylyn.commons.net.Policy;
+import org.eclipse.mylyn.internal.provisional.tasks.core.TasksUtil;
+import org.eclipse.mylyn.internal.tasks.core.TaskRepositoryManager;
 import org.eclipse.mylyn.tasks.core.AbstractRepositoryConnector;
 import org.eclipse.mylyn.tasks.core.IRepositoryQuery;
 import org.eclipse.mylyn.tasks.core.ITask;
@@ -60,6 +68,8 @@ import org.eclipse.mylyn.tasks.core.sync.ISynchronizationSession;
  * @author Steffen Pingel
  */
 public class WebIssuesRepositoryConnector extends AbstractRepositoryConnector {
+
+    final static Logger LOG = Logger.getLogger(WebIssuesRepositoryConnector.class.getName());
 
     private final static String CLIENT_LABEL = "WebIssues";
     public static final String TASK_KEY_UPDATE_DATE = "UpdateDate";
@@ -170,17 +180,28 @@ public class WebIssuesRepositoryConnector extends AbstractRepositoryConnector {
 
     @Override
     public String getTaskIdFromTaskUrl(String url) {
-        if (url == null) {
-            return null;
+        if (url != null) {
+            String cmdStr = "command=";
+            int index = url.indexOf(cmdStr);
+            try {
+                if (index == -1) {
+                    StringTokenizer t = new StringTokenizer(url, "?&");
+                    while (t.hasMoreTokens()) {
+                        String v = t.nextToken();
+                        if (v.startsWith("issue=")) {
+                            return v.substring(6);
+                        }
+                    }
+                    // 1.0-alpha+
+                } else {
+                    String cmd = URLDecoder.decode(url.substring(index + cmdStr.length()), "UTF-8");
+                    return cmd.substring(cmd.indexOf(' ') + 1, cmd.lastIndexOf(' '));
+                }
+            } catch (UnsupportedEncodingException e) {
+                throw new Error(e);
+            }
         }
-        String cmdStr = "command=";
-        int index = url.indexOf(cmdStr);
-        try {
-            String cmd = URLDecoder.decode(index == -1 ? null : url.substring(index + cmdStr.length()), "UTF-8");
-            return cmd.substring(cmd.indexOf(' ') + 1, cmd.lastIndexOf(' '));
-        } catch (UnsupportedEncodingException e) {
-            throw new Error(e);
-        }
+        return null;
     }
 
     @Override
@@ -194,11 +215,20 @@ public class WebIssuesRepositoryConnector extends AbstractRepositoryConnector {
 
     @Override
     public String getTaskUrl(String repositoryUrl, String taskId) {
-        try {
-            return "?command=" + URLEncoder.encode("GET DETAILS " + taskId + " 0", "UTF-8");
-        } catch (UnsupportedEncodingException e) {
-            throw new Error(e);
-        }
+        // As from 1.0-alpha
+        return "client/index.php?issue=" + taskId;
+
+        // try {
+        // }
+        // catch(Exception e1) {
+        // // Assume old format
+        // try {
+        // return "?command=" + URLEncoder.encode("GET DETAILS " + taskId +
+        // " 0", "UTF-8");
+        // } catch (UnsupportedEncodingException e) {
+        // throw new Error(e);
+        // }
+        // }
     }
 
     @Override
@@ -207,6 +237,7 @@ public class WebIssuesRepositoryConnector extends AbstractRepositoryConnector {
         try {
             monitor.beginTask("Querying repository", IProgressMonitor.UNKNOWN);
             WebIssuesClient client;
+
             client = getClientManager().getClient(repository, monitor);
             WebIssuesFilterQueryAdapter search = new WebIssuesFilterQueryAdapter(query, client.getEnvironment());
             Map<String, ITask> taskById = null;
@@ -215,19 +246,19 @@ public class WebIssuesRepositoryConnector extends AbstractRepositoryConnector {
                     if (folder.getType().equals(search.getType())) {
                         taskById = doFolder(repository, resultCollector, session, monitor, client, search, taskById, folder);
                     } else {
-                        System.out.println("    " + folder + " is not of type " + search.getType());
+                        LOG.warning("    " + folder + " is not of type " + search.getType());
                     }
                 }
             }
             return Status.OK_STATUS;
         } catch (IOException ioe) {
-            ioe.printStackTrace();
+            LOG.log(Level.SEVERE, "IO Error.", ioe);
             return WebIssuesCorePlugin.toStatus(ioe, repository);
         } catch (CoreException e) {
-            e.printStackTrace();
+            LOG.log(Level.SEVERE, "Core Error.", e);
             return WebIssuesCorePlugin.toStatus(e, repository);
         } catch (ProtocolException e) {
-            e.printStackTrace();
+            LOG.log(Level.SEVERE, "Protocol Error.", e);
             return WebIssuesCorePlugin.toStatus(e, repository);
         } finally {
             monitor.done();
@@ -252,11 +283,11 @@ public class WebIssuesRepositoryConnector extends AbstractRepositoryConnector {
                 } else if (name.equals(WebIssuesFilterCondition.NAME)) {
                     matches = match(issue, matches, condition, val, issue.getName());
                 } else if (name.equals(WebIssuesFilterCondition.DATE_CREATED)) {
-                    matches = match(issue, matches, condition, val, String
-                                    .valueOf((issue.getCreatedDate().getTimeInMillis() / 1000)));
+                    matches = match(issue, matches, condition, val,
+                        String.valueOf((issue.getCreatedDate().getTimeInMillis() / 1000)));
                 } else if (name.equals(WebIssuesFilterCondition.DATE_MODIFIED)) {
-                    matches = match(issue, matches, condition, val, String
-                                    .valueOf((issue.getModifiedDate().getTimeInMillis() / 1000)));
+                    matches = match(issue, matches, condition, val,
+                        String.valueOf((issue.getModifiedDate().getTimeInMillis() / 1000)));
                 } else if (name.equals(WebIssuesFilterCondition.USER_CREATED)) {
                     matches = match(issue, matches, condition, val, issue.getCreatedUser().getLogin());
                 } else if (name.equals(WebIssuesFilterCondition.USER_MODIFIED)) {
@@ -268,7 +299,7 @@ public class WebIssuesRepositoryConnector extends AbstractRepositoryConnector {
                     } else {
                         String issueAttributeValue = Util.nonNull(issue.get(key));
                         try {
-                            if (key.getType().equals(Attribute.Type.DATETIME)) {
+                            if (key.getType().equals(Attribute.AttributeType.DATETIME)) {
                                 issueAttributeValue = getDateValue(key.isDateOnly(), issueAttributeValue);
                             }
                             matches = match(issue, matches, condition, val, issueAttributeValue);
@@ -344,27 +375,30 @@ public class WebIssuesRepositoryConnector extends AbstractRepositoryConnector {
 
     @Override
     public void postSynchronization(ISynchronizationSession event, IProgressMonitor monitor) throws CoreException {
-//        try {
-//            monitor.beginTask("", 1);
-//            if ((Util.isNullOrBlank(event.getTaskRepository().getSynchronizationTimeStamp()) || event.isFullSynchronization())
-//                            && event.getStatus() == null) {
-//                event.getTaskRepository().setSynchronizationTimeStamp(getSynchronizationStamp(event));
-//            }
-//        } finally {
-//            monitor.done();
-//        }
+        // try {
+        // monitor.beginTask("", 1);
+        // if
+        // ((Util.isNullOrBlank(event.getTaskRepository().getSynchronizationTimeStamp())
+        // || event.isFullSynchronization())
+        // && event.getStatus() == null) {
+        // event.getTaskRepository().setSynchronizationTimeStamp(getSynchronizationStamp(event));
+        // }
+        // } finally {
+        // monitor.done();
+        // }
     }
 
-//    private String getSynchronizationStamp(ISynchronizationSession event) {
-//        Calendar mostRecent = Util.parseDateTimeToCalendar(event.getTaskRepository().getSynchronizationTimeStamp());
-//        for (ITask task : event.getChangedTasks()) {
-//            Calendar taskModifiedDate = Util.toCalendar(task.getModificationDate());
-//            if (taskModifiedDate != null && taskModifiedDate.after(mostRecent)) {
-//                mostRecent = taskModifiedDate;
-//            }
-//        }
-//        return mostRecent == null ? Calendar.getInstance() : mostRecent;
-//    }
+    // private String getSynchronizationStamp(ISynchronizationSession event) {
+    // Calendar mostRecent =
+    // Util.parseDateTimeToCalendar(event.getTaskRepository().getSynchronizationTimeStamp());
+    // for (ITask task : event.getChangedTasks()) {
+    // Calendar taskModifiedDate = Util.toCalendar(task.getModificationDate());
+    // if (taskModifiedDate != null && taskModifiedDate.after(mostRecent)) {
+    // mostRecent = taskModifiedDate;
+    // }
+    // }
+    // return mostRecent == null ? Calendar.getInstance() : mostRecent;
+    // }
 
     @Override
     public void preSynchronization(ISynchronizationSession session, IProgressMonitor monitor) throws CoreException {
@@ -379,7 +413,7 @@ public class WebIssuesRepositoryConnector extends AbstractRepositoryConnector {
         try {
             Calendar now = Calendar.getInstance(TimeZone.getTimeZone(repository.getTimeZoneId()));
             String synchronizationStamp = repository.getSynchronizationTimeStamp();
-            System.out.println("Last sync stamp " + synchronizationStamp);
+            LOG.fine("Last sync stamp " + synchronizationStamp);
             if (Util.isNullOrBlank(synchronizationStamp)) {
                 for (ITask task : session.getTasks()) {
                     session.markStale(task);
@@ -392,8 +426,8 @@ public class WebIssuesRepositoryConnector extends AbstractRepositoryConnector {
             long stampValue = 0;
             try {
                 stampValue = Long.parseLong(synchronizationStamp);
-            } catch(NumberFormatException nfe) {
-                System.err.println("WARNING: Invalid stamp vale of " + synchronizationStamp + ", defaulting to 0");
+            } catch (NumberFormatException nfe) {
+                LOG.warning("Invalid stamp vale of " + synchronizationStamp + ", defaulting to 0");
             }
             List<Issue> issues = new ArrayList<Issue>(client.findIssues(stampValue, monitor));
             if (issues.isEmpty()) {
@@ -408,7 +442,7 @@ public class WebIssuesRepositoryConnector extends AbstractRepositoryConnector {
                 taskById.put(task.getTaskId(), task);
             }
 
-            // 
+            //
             boolean stale = false;
             for (Issue issue : issues) {
                 ITask task = taskById.get(String.valueOf(issue.getId()));
@@ -421,7 +455,7 @@ public class WebIssuesRepositoryConnector extends AbstractRepositoryConnector {
                 }
             }
 
-            System.out.println("Setting sync stamp to " + stampValue);
+            LOG.fine("Setting sync stamp to " + stampValue);
             repository.setSynchronizationTimeStamp(String.valueOf(stampValue));
             if (!stale) {
                 session.setNeedsPerformQueries(false);
@@ -458,6 +492,7 @@ public class WebIssuesRepositoryConnector extends AbstractRepositoryConnector {
     public void updateRepositoryConfiguration(TaskRepository repository, IProgressMonitor monitor) throws CoreException {
         try {
             WebIssuesClient client = getClientManager().getClient(repository, monitor);
+            repository.setProperty("protocolVersion", client.getEnvironment().getVersion());
             client.updateAttributes(monitor, true);
         } catch (Exception e) {
             throw new CoreException(WebIssuesCorePlugin.toStatus(e, repository));
@@ -469,13 +504,43 @@ public class WebIssuesRepositoryConnector extends AbstractRepositoryConnector {
         TaskMapper mapper = getTaskMapping(taskData);
         mapper.applyTo(task);
         try {
-            task.setUrl(Util.concatenateUri(taskRepository.getRepositoryUrl(), "?" + "command="
-                            + URLEncoder.encode("GET DETAILS " + task.getTaskId() + " 0", "UTF-8")));
+            String pv = taskRepository.getProperty("protocolVersion");
+            if (pv != null && pv.startsWith("0.")) {
+                task.setUrl(Util.concatenateUri(taskRepository.getRepositoryUrl(),
+                    "?" + "command=" + URLEncoder.encode("GET DETAILS " + task.getTaskId() + " 0", "UTF-8")));
+            } else {
+                task.setUrl(Util.concatenateUri(taskRepository.getRepositoryUrl(), "/client/index.php?issue=" + task.getTaskId()));
+            }
             Date date = task.getModificationDate();
             task.setAttribute(TASK_KEY_UPDATE_DATE, (date != null) ? Util.formatTimestamp(date) + "" : null);
         } catch (Exception e) {
             throw new Error(e);
         }
+    }
+
+    @Override
+    public boolean canDeleteTask(TaskRepository repository, ITask task) {
+        try {
+            WebIssuesClient client = getClientManager().getClient(repository, new NullProgressMonitor());
+            if (client.getEnvironment().getOwnerUser().getAccess().equals(Access.ADMIN)) {
+                return true;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    @Override
+    public IStatus deleteTask(TaskRepository repository, ITask task, IProgressMonitor monitor) throws CoreException {
+        try {
+            WebIssuesClient client = getClientManager().getClient(repository, monitor);
+            client.deleteTask(task, monitor);
+        } catch (Exception e) {
+            Status status = new Status(IStatus.ERROR, WebIssuesCorePlugin.ID_PLUGIN, e.getLocalizedMessage(), e);
+            throw new CoreException(status);
+        }
+        return Status.OK_STATUS;
     }
 
     @Override

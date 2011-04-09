@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
+import java.util.logging.Logger;
 
 import net.sf.webissues.api.Environment;
 import net.sf.webissues.api.Folder;
@@ -27,6 +28,7 @@ import org.eclipse.ui.forms.widgets.FormToolkit;
 
 @SuppressWarnings("restriction")
 public class WebIssuesPersonAttributeEditor extends AbstractSelectorAttributeEditor<User> {
+    final static Logger LOG = Logger.getLogger(WebIssuesPersonAttributeEditor.class.getName());
 
     public WebIssuesPersonAttributeEditor(TaskDataModel manager, TaskAttribute taskAttribute) {
         super(manager, taskAttribute);
@@ -50,7 +52,7 @@ public class WebIssuesPersonAttributeEditor extends AbstractSelectorAttributeEdi
                 users = new ArrayList<User>(client.getEnvironment().getUsers().values());
             }
         } catch (Exception e) {
-            System.err.println("WARNING: Could not get user list.");
+            LOG.warning("Could not get user list.");
             e.printStackTrace();
             users = new ArrayList<User>();
         }
@@ -60,7 +62,7 @@ public class WebIssuesPersonAttributeEditor extends AbstractSelectorAttributeEdi
         if (!Util.isNullOrBlank(person)) {
             User userByLogin = attributes.getUsers().getUserByName(person);
             if (userByLogin == null) {
-                System.err.println("*** User with login '" + person + "' does not exist");
+                LOG.severe("User with login '" + person + "' does not exist");
             } else {
                 userPicker.setItem(userByLogin);
             }
