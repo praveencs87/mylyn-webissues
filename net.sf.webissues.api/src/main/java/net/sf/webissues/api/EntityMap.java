@@ -9,7 +9,7 @@ import java.util.TreeMap;
  * 
  * @param <T> entity
  */
-public abstract class EntityMap<T extends Entity> {
+public abstract class EntityMap<T extends Entity>  {
 
     private Map<Integer, T> entities = new TreeMap<Integer, T>();
 

@@ -15,6 +15,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 
 import org.eclipse.jface.resource.ImageDescriptor;
+import org.eclipse.mylyn.tasks.ui.TasksUiImages;
 
 /**
  * @author Shawn Minto
@@ -29,6 +30,7 @@ public class WebIssuesImages {
 
 	public static final ImageDescriptor OVERLAY_BUGS = create(T_VIEW, "overlay-bugs.gif");
 	public static final ImageDescriptor OVERLAY_FEATURES = create(T_VIEW, "overlay-features.gif");
+    public static final ImageDescriptor OVERLAY_TASKS = TasksUiImages.TASK;
     public static final ImageDescriptor ALL = create(T_VIEW, "all.gif");
 
 	private static ImageDescriptor create(String prefix, String name) {

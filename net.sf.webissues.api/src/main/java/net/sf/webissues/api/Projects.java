@@ -21,7 +21,7 @@ public class Projects extends EntityMap<Project> implements Serializable {
         super();
         this.environment = environment;
     }
-
+    
     /**
      * Get the environment this project list belongs to.
      * 

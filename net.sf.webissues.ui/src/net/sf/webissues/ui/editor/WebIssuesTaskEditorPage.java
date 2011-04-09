@@ -2,6 +2,10 @@ package net.sf.webissues.ui.editor;
 
 import java.util.Set;
 
+import net.sf.webissues.api.Environment;
+import net.sf.webissues.api.Folder;
+import net.sf.webissues.api.Project;
+import net.sf.webissues.api.Type;
 import net.sf.webissues.core.WebIssuesAttribute;
 import net.sf.webissues.core.WebIssuesClient;
 import net.sf.webissues.core.WebIssuesCorePlugin;
@@ -10,6 +14,7 @@ import net.sf.webissues.core.WebIssuesTaskDataHandler;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.jface.viewers.SelectionChangedEvent;
+import org.eclipse.mylyn.internal.tasks.ui.editors.TaskEditorActionPart;
 import org.eclipse.mylyn.tasks.core.data.TaskAttribute;
 import org.eclipse.mylyn.tasks.core.data.TaskDataModel;
 import org.eclipse.mylyn.tasks.core.data.TaskDataModelEvent;
@@ -24,7 +29,7 @@ import org.eclipse.mylyn.tasks.ui.editors.TaskEditorPartDescriptor;
 public class WebIssuesTaskEditorPage extends AbstractTaskEditorPage {
 
     public static final String ID_PART_HISTORY = "net.sf.webissues.ui.editor.history"; //$NON-NLS-1$
-    
+
     public WebIssuesTaskEditorPage(TaskEditor editor) {
         super(editor, WebIssuesCorePlugin.CONNECTOR_KIND);
     }
@@ -62,12 +67,23 @@ public class WebIssuesTaskEditorPage extends AbstractTaskEditorPage {
             public void attributeChanged(TaskDataModelEvent evt) {
                 if (evt.getTaskAttribute().getId().equals(WebIssuesAttribute.PROJECT.getTaskKey())) {
                     try {
-                        WebIssuesClient client = WebIssuesCorePlugin.getDefault().getConnector().getClientManager().getClient(
-                            getTaskRepository(), new NullProgressMonitor());
+                        boolean existingTask = model.getTask().getTaskKey() != null;
+                        WebIssuesClient client = WebIssuesCorePlugin.getDefault().getConnector().getClientManager()
+                                        .getClient(getTaskRepository(), new NullProgressMonitor());
                         TaskAttribute attribute = model.getTaskData().getRoot()
                                         .getAttribute(WebIssuesAttribute.FOLDER.getTaskKey());
-                        WebIssuesTaskDataHandler.rebuildFolders(client.getEnvironment(), evt.getTaskAttribute(), model
-                                        .getTaskData(), attribute);
+                        Type currentType = null;
+                        Environment environment = client.getEnvironment();
+                        if (existingTask) {
+                            currentType = environment
+                                            .getProjects()
+                                            .getFolder(
+                                                Integer.parseInt(model.getTaskData().getRoot()
+                                                                .getAttribute(WebIssuesAttribute.FOLDER.getTaskKey()).getValue()))
+                                            .getType();
+                        }
+                        WebIssuesTaskDataHandler.rebuildFolders(environment, evt.getTaskAttribute(), model.getTaskData(),
+                            attribute, currentType);
                         model.attributeChanged(attribute);
                     } catch (Exception e) {
                         e.printStackTrace();
@@ -82,18 +98,30 @@ public class WebIssuesTaskEditorPage extends AbstractTaskEditorPage {
     @Override
     protected Set<TaskEditorPartDescriptor> createPartDescriptors() {
         Set<TaskEditorPartDescriptor> descriptors = super.createPartDescriptors();
+
+        // Remove the default parts
         for (TaskEditorPartDescriptor taskEditorPartDescriptor : descriptors) {
-            if (taskEditorPartDescriptor.getId().equals(ID_PART_PEOPLE)) {
+            if (taskEditorPartDescriptor.getId().equals(ID_PART_PEOPLE) || taskEditorPartDescriptor.getId().equals(ID_PART_ACTIONS)) {
                 descriptors.remove(taskEditorPartDescriptor);
                 break;
             }
         }
+
+        // Add the replacement parts
         descriptors.add(new TaskEditorPartDescriptor(ID_PART_PEOPLE) {
             @Override
             public AbstractTaskEditorPart createPart() {
                 return new WebIssuesPeoplePart();
             }
         }.setPath(PATH_PEOPLE));
+        descriptors.add(new TaskEditorPartDescriptor(ID_PART_ACTIONS) {
+            @Override
+            public AbstractTaskEditorPart createPart() {
+                return new WebIssuesActionPart();
+            }
+        }.setPath(PATH_ACTIONS));
+
+        // Add new parts
         descriptors.add(new TaskEditorPartDescriptor(ID_PART_HISTORY) {
             @Override
             public AbstractTaskEditorPart createPart() {

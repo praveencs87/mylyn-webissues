@@ -9,6 +9,8 @@ import java.util.Map;
 
 import org.apache.commons.httpclient.HttpException;
 import org.apache.commons.httpclient.HttpMethod;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 /**
  * Each {@link Project} may contain many {@link Folder}s and is of a single
@@ -17,6 +19,7 @@ import org.apache.commons.httpclient.HttpMethod;
  */
 public class Folder implements Serializable, Entity, NamedEntity {
 
+    final static Log LOG = LogFactory.getLog(Folder.class);
     private static final long serialVersionUID = -8269970767878718415L;
 
     private int id;
@@ -134,24 +137,27 @@ public class Folder implements Serializable, Entity, NamedEntity {
                 }
 
                 // States
-                method = client.doCommand("LIST STATES " + stamp);
-                try {
-                    for (List<String> response : client.readResponse(method.getResponseBodyAsStream())) {
-                        if (response.get(0).equals("S")) {
-                            int stateId = Integer.parseInt(response.get(1));
-                            int issueId = Integer.parseInt(response.get(2));
-                            int readId = Integer.parseInt(response.get(3));
-                            Issue issue  = issues.get(issueId);
-                            if (issue == null) {
-                                throw new Error("Expected issue for " + issueId + " before state");
+                if (!client.getEnvironment().getVersion().startsWith("0.")) {
+                    method = client.doCommand("LIST STATES " + stamp);
+                    try {
+                        for (List<String> response : client.readResponse(method.getResponseBodyAsStream())) {
+                            if (response.get(0).equals("S")) {
+                                int stateId = Integer.parseInt(response.get(1));
+                                int issueId = Integer.parseInt(response.get(2));
+                                int readId = Integer.parseInt(response.get(3));
+                                Issue issue = issues.get(issueId);
+                                if (issue == null) {
+                                    LOG.warn("Expected issue for " + issueId + " before state");
+                                } else {
+                                    issue.setRead(readId == 1);
+                                }
+                            } else {
+                                Client.LOG.warn("Unexpected states response \"" + response + "\"");
                             }
-                            issue.setRead(readId == 1);
-                        } else {
-                            Client.LOG.warn("Unexpected states response \"" + response + "\"");
                         }
+                    } finally {
+                        method.releaseConnection();
                     }
-                } finally {
-                    method.releaseConnection();
                 }
                 return issues.values();
             }
@@ -186,12 +192,24 @@ public class Folder implements Serializable, Entity, NamedEntity {
 
     @Override
     public boolean equals(Object obj) {
-        return obj != null && obj instanceof Folder && id == ((Folder) obj).id;
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        Folder other = (Folder) obj;
+        if (id != other.id)
+            return false;
+        return true;
     }
 
     @Override
     public int hashCode() {
-        return getId();
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + id;
+        return result;
     }
 
     @Override
