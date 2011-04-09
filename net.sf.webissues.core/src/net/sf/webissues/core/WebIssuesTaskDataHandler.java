@@ -460,7 +460,7 @@ public class WebIssuesTaskDataHandler extends AbstractTaskDataHandler {
             if (project != null) {
                 attr.clearOptions();
                 for (Folder folder : project.values()) {
-                    if (currentType == null || (!environment.getVersion().startsWith("0.") && currentType.equals(folder.getType()))) {
+                    if (environment.getVersion().startsWith("0.") || folder.getType().equals(currentType)) {
                         String key = String.valueOf(folder.getId());
                         attr.putOption(key, folder.getName() + " (" + folder.getType().getName() + ")");
                         if (attr.getOptions().size() == 1) {
