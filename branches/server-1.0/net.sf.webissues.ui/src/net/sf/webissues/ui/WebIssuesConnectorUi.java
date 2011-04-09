@@ -72,6 +72,8 @@ public class WebIssuesConnectorUi extends AbstractRepositoryConnectorUi {
             return WebIssuesImages.OVERLAY_FEATURES;
         } else if (kind.equalsIgnoreCase("bugs")) {
             return WebIssuesImages.OVERLAY_BUGS;
+        } else if (kind.equalsIgnoreCase("tasks")) {
+            return WebIssuesImages.OVERLAY_TASKS;
         }
         return super.getTaskKindOverlay(task);
     }
@@ -81,6 +83,7 @@ public class WebIssuesConnectorUi extends AbstractRepositoryConnectorUi {
         List<LegendElement> legendItems = new ArrayList<LegendElement>();
         legendItems.add(LegendElement.createTask("Bugs", WebIssuesImages.OVERLAY_BUGS));
         legendItems.add(LegendElement.createTask("Features", WebIssuesImages.OVERLAY_FEATURES));
+        legendItems.add(LegendElement.createTask("Tasks", WebIssuesImages.OVERLAY_TASKS));
         return legendItems;
     }
 

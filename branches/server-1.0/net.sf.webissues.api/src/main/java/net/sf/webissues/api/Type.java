@@ -24,6 +24,28 @@ public class Type extends HashMap<Integer, Attribute> implements Serializable {
         views = new Views(types.getEnvironment());
     }
 
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = super.hashCode();
+        result = prime * result + id;
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (!super.equals(obj))
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        Type other = (Type) obj;
+        if (id != other.id)
+            return false;
+        return true;
+    }
+
     /**
      * Create a new attrbiute
      * 
