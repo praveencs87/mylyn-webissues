@@ -36,6 +36,7 @@ public class Attribute implements Entity, NamedEntity, Serializable, Comparable<
     private Collection<String> options;
     private AttributeType attributeType;
     private Client client;
+    private boolean builtIn;
 
     /**
      * The type of data this attribute will hold.
@@ -139,13 +140,34 @@ public class Attribute implements Entity, NamedEntity, Serializable, Comparable<
     /*
      * Internal constructor.
      */
-    protected Attribute(Type type, int id, String name, String definition) {
+    protected Attribute(Type type, int id, String name, String definition, boolean builtIn) {
         super();
+        this.builtIn = builtIn;
         this.type = type;
         this.id = id;
         this.name = name;
         this.definition = definition;
         parseDefinition();
+    }
+    
+    protected Attribute(Type type, int id, String name, AttributeType attributeType, boolean builtIn) {
+        super();
+        this.builtIn = builtIn;
+        this.type = type;
+        this.attributeType = attributeType;
+        this.id = id;
+        this.name = name;
+    }
+
+    /**
+     * Get if this attribute is built in (i.e. not definied on the server. The ID and name
+     * attributes are examples of built in attributes. They are only really here to provide
+     * definitions that may be used in {@link View} definitions.
+     * 
+     * @return built in
+     */
+    public boolean isBuiltIn() {
+        return builtIn;
     }
     
     /**
@@ -324,6 +346,10 @@ public class Attribute implements Entity, NamedEntity, Serializable, Comparable<
      */
     public long getMaxValue() {
         return maxValue;
+    }
+
+    public void setDateOnly(boolean dateOnly) {
+        this.dateOnly = dateOnly;
     }
 
     @Override

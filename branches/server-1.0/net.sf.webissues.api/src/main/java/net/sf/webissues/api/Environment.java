@@ -12,8 +12,6 @@ import java.util.List;
 import org.apache.commons.httpclient.Header;
 import org.apache.commons.httpclient.HttpException;
 import org.apache.commons.httpclient.HttpMethod;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 
 /**
  * Contains all (mostly) top level static data that is retrieved upon
@@ -27,7 +25,6 @@ public class Environment implements Serializable {
      * 
      */
     private static final long serialVersionUID = 1L;
-    private static final Log LOG = LogFactory.getLog(Environment.class);
 
     private String name;
     private String version;
@@ -260,14 +257,14 @@ public class Environment implements Serializable {
             }
 
             if (version.compareTo(Client.PROTOCOL_VERSION) > 0) {
-                synchronized (LOG) {
-                    LOG.warn("******************************************");
-                    LOG.warn("*   WARNING - Protocol Version Mismatch  *");
-                    LOG.warn("******************************************");
-                    LOG.warn("This server is using protocol version " + version);
-                    LOG.warn("where as this library only supports <= " + Client.PROTOCOL_VERSION);
-                    LOG.warn("You may experience problems, and it is not");
-                    LOG.warn("recommended you continue");
+                synchronized (Client.LOG) {
+                    Client.LOG.warn("******************************************");
+                    Client.LOG.warn("*   WARNING - Protocol Version Mismatch  *");
+                    Client.LOG.warn("******************************************");
+                    Client.LOG.warn("This server is using protocol version " + version);
+                    Client.LOG.warn("where as this library only supports <= " + Client.PROTOCOL_VERSION);
+                    Client.LOG.warn("You may experience problems, and it is not");
+                    Client.LOG.warn("recommended you continue");
                 }
             }
 

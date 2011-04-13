@@ -19,6 +19,8 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import net.sf.webissues.api.Condition;
+import net.sf.webissues.api.ConditionType;
 import net.sf.webissues.api.Environment;
 import net.sf.webissues.api.ProtocolException;
 import net.sf.webissues.api.Types;
@@ -28,10 +30,7 @@ import net.sf.webissues.api.Views;
 import net.sf.webissues.core.WebIssuesClient;
 import net.sf.webissues.core.WebIssuesClientManager;
 import net.sf.webissues.core.WebIssuesCorePlugin;
-import net.sf.webissues.core.WebIssuesFilterCondition;
-import net.sf.webissues.core.WebIssuesFilterCondition.Type;
 import net.sf.webissues.core.WebIssuesFilterQueryAdapter;
-import net.sf.webissues.ui.WebIssuesImages;
 import net.sf.webissues.ui.WebIssuesUiPlugin;
 
 import org.apache.commons.httpclient.HttpException;
@@ -40,7 +39,6 @@ import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.jface.dialogs.IDialogSettings;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.operation.IRunnableWithProgress;
-import org.eclipse.mylyn.internal.provisional.commons.ui.CommonImages;
 import org.eclipse.mylyn.tasks.core.IRepositoryQuery;
 import org.eclipse.mylyn.tasks.core.TaskRepository;
 import org.eclipse.mylyn.tasks.ui.wizards.AbstractRepositoryQueryPage;
@@ -94,6 +92,8 @@ public class WebIssuesQueryPage extends AbstractRepositoryQueryPage {
     private Combo viewCombo;
     private Views views;
 
+    private Button addButton;
+
     public WebIssuesQueryPage(TaskRepository repository, IRepositoryQuery query) {
         super(TITLE, repository, query);
         setTitle(TITLE);
@@ -127,6 +127,7 @@ public class WebIssuesQueryPage extends AbstractRepositoryQueryPage {
 
         rebuildTypeList();
         setControl(control);
+        computeAvailableActions();
     }
 
     @Override
@@ -138,14 +139,14 @@ public class WebIssuesQueryPage extends AbstractRepositoryQueryPage {
         updateClient(false);
         type.select(type.indexOf(search.getType().getName()));
         if (search.getView() != null) {
-            for(int i = 0 ; i < viewCombo.getItemCount(); i++) {
-                if(viewCombo.getItem(i).equals(search.getView().getName())) {
+            for (int i = 0; i < viewCombo.getItemCount(); i++) {
+                if (viewCombo.getItem(i).equals(search.getView().getName())) {
                     viewCombo.select(i);
                     break;
                 }
             }
         }
-        for (WebIssuesFilterCondition condition : search.getConditions()) {
+        for (Condition condition : search.getConditions()) {
             addRow(condition);
         }
         // textField.setText(Util.nonNull(search.getSearchText()));
@@ -199,7 +200,6 @@ public class WebIssuesQueryPage extends AbstractRepositoryQueryPage {
             }
         });
 
-
         // View
         l = new Label(group, SWT.NONE);
         l.setText("Preset View:");
@@ -208,12 +208,13 @@ public class WebIssuesQueryPage extends AbstractRepositoryQueryPage {
 
             @Override
             public void widgetSelected(SelectionEvent e) {
-                View selectedView = views.get(viewCombo.getSelectionIndex());
-                System.out.println(selectedView.getDefinition());
+                clearRows();
+                computeAvailableActions();
             }
 
             @Override
             public void widgetDefaultSelected(SelectionEvent e) {
+                computeAvailableActions();
             }
         });
 
@@ -221,10 +222,19 @@ public class WebIssuesQueryPage extends AbstractRepositoryQueryPage {
         gd.horizontalSpan = 1;
         viewCombo.setLayoutData(gd);
     }
+    
+    void computeAvailableActions() {
+//        addButton.setEnabled(getSelectedView() == null);
+    }
 
     net.sf.webissues.api.Type getSelectedType() {
         int sel = type.getSelectionIndex();
         return sel < 0 ? null : types.getByName(type.getItem(sel));
+    }
+
+    private View getSelectedView() {
+        int selectionIndex = viewCombo.getSelectionIndex();
+        return selectionIndex == -1 || views == null ? null : views.getByName(viewCombo.getItem(selectionIndex));
     }
 
     private void rebuildTypeList() {
@@ -255,6 +265,10 @@ public class WebIssuesQueryPage extends AbstractRepositoryQueryPage {
 
     void rebuildAttributes() {
         rebuildViewList();
+        clearRows();
+    }
+
+    private void clearRows() {
         rows.clear();
         for (Control child : attributesGrid.getChildren()) {
             child.dispose();
@@ -325,7 +339,7 @@ public class WebIssuesQueryPage extends AbstractRepositoryQueryPage {
         attributesGrid = new Composite(scroller, SWT.NONE);
         attributesGrid.setBackground(scroller.getDisplay().getSystemColor(SWT.COLOR_LIST_BACKGROUND));
         GridLayout layout = new GridLayout();
-        layout.numColumns = 4;
+        layout.numColumns = 5;
         attributesGrid.setLayout(layout);
 
         scroller.setContent(attributesGrid);
@@ -355,13 +369,13 @@ public class WebIssuesQueryPage extends AbstractRepositoryQueryPage {
 
         new Label(group, SWT.NONE);
 
-        Button addButton = new Button(group, SWT.PUSH);
+        addButton = new Button(group, SWT.PUSH);
         addButton.setText("Add");
         addButton.addSelectionListener(new SelectionAdapter() {
 
             @Override
             public void widgetSelected(SelectionEvent e) {
-                addRow(new WebIssuesFilterCondition(Type.IS_EQUAL_TO, false, null, null));
+                addRow(new Condition(ConditionType.EQ, null, null));
             }
         });
 
@@ -409,8 +423,8 @@ public class WebIssuesQueryPage extends AbstractRepositoryQueryPage {
         }
     }
 
-    private void addRow(WebIssuesFilterCondition condition) {
-        AttributeRow row = new AttributeRow(getSelectedType(), attributesGrid, condition, rows) {
+    private void addRow(Condition condition) {
+        AttributeRow row = new AttributeRow(getSelectedType(), attributesGrid, condition, rows, getSelectedView() != null) {
             @Override
             protected void onDoLayout() {
                 attributesGrid.layout();
@@ -485,8 +499,9 @@ public class WebIssuesQueryPage extends AbstractRepositoryQueryPage {
         WebIssuesFilterQueryAdapter search = new WebIssuesFilterQueryAdapter();
         net.sf.webissues.api.Type selectedType = getSelectedType();
         search.setType(selectedType);
-        if (viewCombo.getSelectionIndex() > 0 && views != null) {
-            search.setView(views.get(viewCombo.getSelectionIndex() - 1));
+        View view = getSelectedView();
+        if (view != null) {
+            search.setView(view);
         }
         for (AttributeRow row : rows) {
             if (row.getCondition() != null) {

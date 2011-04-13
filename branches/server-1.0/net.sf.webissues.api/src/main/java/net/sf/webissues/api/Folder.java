@@ -9,8 +9,6 @@ import java.util.Map;
 
 import org.apache.commons.httpclient.HttpException;
 import org.apache.commons.httpclient.HttpMethod;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 
 /**
  * Each {@link Project} may contain many {@link Folder}s and is of a single
@@ -19,7 +17,6 @@ import org.apache.commons.logging.LogFactory;
  */
 public class Folder implements Serializable, Entity, NamedEntity {
 
-    final static Log LOG = LogFactory.getLog(Folder.class);
     private static final long serialVersionUID = -8269970767878718415L;
 
     private int id;
@@ -144,12 +141,10 @@ public class Folder implements Serializable, Entity, NamedEntity {
                             if (response.get(0).equals("S")) {
                                 int stateId = Integer.parseInt(response.get(1));
                                 int issueId = Integer.parseInt(response.get(2));
-                                int readId = Integer.parseInt(response.get(3));
+                                long readId = Integer.parseInt(response.get(3));
                                 Issue issue = issues.get(issueId);
-                                if (issue == null) {
-                                    LOG.warn("Expected issue for " + issueId + " before state");
-                                } else {
-                                    issue.setRead(readId == 1);
+                                if (issue != null) {
+                                    issue.setRead(readId != 0 && readId == issue.getStamp());
                                 }
                             } else {
                                 Client.LOG.warn("Unexpected states response \"" + response + "\"");

@@ -10,19 +10,21 @@ import java.util.Collections;
 import java.util.List;
 
 import net.sf.webissues.api.Attribute;
+import net.sf.webissues.api.Condition;
+import net.sf.webissues.api.ConditionType;
 import net.sf.webissues.api.Environment;
 import net.sf.webissues.api.Folder;
 import net.sf.webissues.api.Project;
 import net.sf.webissues.api.User;
 import net.sf.webissues.api.Util;
-import net.sf.webissues.core.WebIssuesFilterCondition;
-import net.sf.webissues.core.WebIssuesFilterCondition.Type;
 import net.sf.webissues.ui.WebIssuesImages;
 import net.sf.webissues.ui.WebIssuesUserSelector;
 
 import org.eclipse.mylyn.internal.provisional.commons.ui.CommonImages;
 import org.eclipse.mylyn.internal.provisional.commons.ui.DatePicker;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.FocusEvent;
+import org.eclipse.swt.events.FocusListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.SelectionListener;
@@ -41,13 +43,14 @@ class AttributeRow {
     private Composite value;
     private final net.sf.webissues.api.Type type;
     private Combo attributeCombo;
+    private Combo conditionCombo;
     private GridData comboGridData;
     private GridData valueGridData;
     private GridData buttonGridData;
-    private WebIssuesFilterCondition condition;
+    private Condition condition;
     private List<AttributeRow> rows;
 
-    AttributeRow(net.sf.webissues.api.Type type, Composite parent, WebIssuesFilterCondition condition, List<AttributeRow> rows) {
+    AttributeRow(net.sf.webissues.api.Type type, Composite parent, Condition condition, List<AttributeRow> rows, boolean forView) {
         this.rows = rows;
         this.type = type;
 
@@ -55,15 +58,14 @@ class AttributeRow {
 
         // Attribute type
         attributeCombo = new Combo(parent, SWT.NONE);
-        attributeCombo.add(WebIssuesFilterCondition.PROJECT);
-        attributeCombo.add(WebIssuesFilterCondition.FOLDER);
-        attributeCombo.add(WebIssuesFilterCondition.NAME);
-        attributeCombo.add(WebIssuesFilterCondition.DATE_CREATED);
-        attributeCombo.add(WebIssuesFilterCondition.USER_CREATED);
-        attributeCombo.add(WebIssuesFilterCondition.DATE_MODIFIED);
-        attributeCombo.add(WebIssuesFilterCondition.USER_MODIFIED);
-        for (Attribute attribute : type.values()) {
-            attributeCombo.add(attribute.getName());
+        if (!forView) {
+            for (Attribute attribute : type.values()) {
+                String attrName = attribute.getName();
+                attributeCombo.add(attrName);
+                if (attribute.equals(condition.getAttribute())) {
+                    attributeCombo.select(attributeCombo.getItemCount() - 1);
+                }
+            }
         }
         comboGridData = new GridData(SWT.NONE, SWT.NONE, false, false);
         comboGridData.widthHint = 120;
@@ -74,8 +76,9 @@ class AttributeRow {
 
             @Override
             public void widgetSelected(SelectionEvent e) {
-                AttributeRow.this.condition.setName(null);
+                AttributeRow.this.condition.setAttribute(null);
                 AttributeRow.this.condition.setValue(null);
+                buildConditions();
                 rebuildValue();
             }
 
@@ -85,17 +88,40 @@ class AttributeRow {
             }
         });
 
+        // Condition
+        conditionCombo = new Combo(parent, SWT.NONE);
+        comboGridData = new GridData(SWT.NONE, SWT.NONE, false, false);
+        comboGridData.widthHint = 128;
+        comboGridData.horizontalSpan = 1;
+        comboGridData.verticalAlignment = SWT.TOP;
+        conditionCombo.setLayoutData(comboGridData);
+        conditionCombo.addSelectionListener(new SelectionListener() {
+
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                AttributeRow.this.condition.setType(getSelectedConditionType());
+                rebuildValue();
+            }
+
+            @Override
+            public void widgetDefaultSelected(SelectionEvent e) {
+            }
+        });
+        buildConditions();
+
         // Value
-        value = new Composite(parent, SWT.NONE);
+        value = new Composite(parent, SWT.BORDER_DASH);
         value.setBackground(parent.getDisplay().getSystemColor(SWT.COLOR_LIST_BACKGROUND));
-        value.setLayout(new GridLayout(1, true));
+        GridLayout gridLayout = new GridLayout(1, true);
+        gridLayout.marginHeight = 0;
+        value.setLayout(gridLayout);
         valueGridData = new GridData(SWT.FILL, SWT.NONE, true, false);
+        valueGridData.verticalAlignment = SWT.TOP;
         valueGridData.horizontalSpan = 2;
         value.setLayoutData(valueGridData);
 
         // Delete
 
-        
         final Button removeButton = new Button(parent, SWT.PUSH);
         removeButton.setBackground(value.getDisplay().getSystemColor(SWT.COLOR_LIST_BACKGROUND));
         buttonGridData = new GridData(SWT.NONE, SWT.NONE, false, false);
@@ -114,8 +140,8 @@ class AttributeRow {
         });
 
         // Default select
-        String attrVal = condition.getName();
-        int idx = attrVal == null ? -1 : Arrays.asList(attributeCombo.getItems()).indexOf(attrVal);
+        Attribute attrVal = condition.getAttribute();
+        int idx = attrVal == null ? -1 : Arrays.asList(attributeCombo.getItems()).indexOf(attrVal.getName());
         if (idx != -1) {
             attributeCombo.select(idx);
             rebuildValue();
@@ -127,10 +153,32 @@ class AttributeRow {
         }
     }
 
+    private Attribute getSelectedAttribute() {
+        int selectionIndex = attributeCombo.getSelectionIndex();
+        return selectionIndex == -1 ? null : type.getByName(attributeCombo.getItem(selectionIndex));
+    }
+
+    private void buildConditions() {
+        Attribute attr = getSelectedAttribute();
+        conditionCombo.removeAll();
+        for (ConditionType conditionType : ConditionType.values()) {
+            if (attr == null || conditionType.isFor(attr)) {
+                conditionCombo.add(conditionType.getLabel());
+                if (conditionType.equals(condition.getType())) {
+                    conditionCombo.select(conditionCombo.getItemCount() - 1);
+                }
+            }
+        }
+        if (conditionCombo.getSelectionIndex() == -1 && conditionCombo.getItemCount() > 0) {
+            conditionCombo.select(0);
+        }
+    }
+
     void removeRow(final Button removeButton) {
         value.dispose();
         removeButton.dispose();
         attributeCombo.dispose();
+        conditionCombo.dispose();
         rows.remove(this);
         redoLayout();
     }
@@ -140,41 +188,48 @@ class AttributeRow {
             control.dispose();
         }
         GridData gd = new GridData(SWT.FILL, SWT.NONE, true, false);
-        String item = attributeCombo.getItem(attributeCombo.getSelectionIndex());
-        condition.setName(item);
-        if (item.equals(WebIssuesFilterCondition.PROJECT)) {
-            addProjects(gd);
-        } else if (item.equals(WebIssuesFilterCondition.FOLDER)) {
-            addFolders(gd);
-        } else if (item.equals(WebIssuesFilterCondition.NAME)) {
-            addText(gd);
-        } else if (item.equals(WebIssuesFilterCondition.DATE_CREATED) || item.equals(WebIssuesFilterCondition.DATE_MODIFIED)) {
-            addDate(false, gd);
-        } else if (item.equals(WebIssuesFilterCondition.USER_CREATED) || item.equals(WebIssuesFilterCondition.USER_MODIFIED)) {
-            addUser(gd);
-        } else {
-            Attribute attribute = type.getByName(item);
-            if (attribute != null) {
-                switch (attribute.getAttributeType()) {
+        Attribute attr = getSelectedAttribute();
+        if (attr != null) {
+            ConditionType conditionType = getSelectedConditionType();
+            condition.setAttribute(attr);
+            boolean multiple = conditionType.equals(ConditionType.IN);
+            if (attr.getId() == net.sf.webissues.api.Type.PROJECT_ATTR_ID) {
+                addProjects(gd, multiple);
+            } else if (attr.getId() == net.sf.webissues.api.Type.FOLDER_ATTR_ID) {
+                addFolders(gd, multiple);
+            } else {
+                switch (attr.getAttributeType()) {
                     case ENUM:
-                        addEnum(attribute, gd);
+                        addEnum(attr, gd, multiple);
                         break;
                     case NUMERIC:
-                        addNumeric(attribute, gd);
+                        addNumeric(attr, gd);
                         break;
                     case TEXT:
                         addText(gd);
                         break;
                     case USER:
-                        addUser(gd);
+                        if (conditionType.equals(ConditionType.IN)) {
+                            addUser(gd);
+                        } else {
+                            addText(gd);
+                        }
                         break;
                     case DATETIME:
-                        addDate(attribute, gd);
+                        addDate(attr, gd);
                         break;
                 }
             }
         }
         redoLayout();
+    }
+
+    private ConditionType getSelectedConditionType() {
+        int selectionIndex = conditionCombo.getSelectionIndex();
+        if (selectionIndex == -1) {
+            return null;
+        }
+        return ConditionType.fromLabel(conditionCombo.getItem(selectionIndex));
     }
 
     private void redoLayout() {
@@ -188,11 +243,22 @@ class AttributeRow {
     }
 
     private void addText(GridData gd) {
-        condition.setType(Type.IS_EQUAL_TO);
         configureForTop();
         final Text text = new Text(value, SWT.BORDER);
         // text.setBackground(value.getDisplay().getSystemColor(SWT.COLOR_LIST_BACKGROUND));
         text.setLayoutData(gd);
+        text.addFocusListener(new FocusListener() {
+            @Override
+            public void focusLost(FocusEvent arg0) {
+                condition.setValue(text.getText());                
+            }
+            
+            @Override
+            public void focusGained(FocusEvent arg0) {
+                // TODO Auto-generated method stub
+                
+            }
+        });
         text.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetDefaultSelected(SelectionEvent e) {
@@ -216,66 +282,41 @@ class AttributeRow {
     }
 
     private void addDate(boolean dateOnly, GridData gd) {
-        condition.setType(Type.IS_IN);
         configureForTop();
 
         comboGridData.verticalAlignment = SWT.CENTER;
         valueGridData.verticalAlignment = SWT.CENTER;
         buttonGridData.verticalAlignment = SWT.CENTER;
-        Composite row = new Composite(value, SWT.NONE);
-        row.setBackground(value.getDisplay().getSystemColor(SWT.COLOR_LIST_BACKGROUND));
-        row.setLayout(new GridLayout(2, true));
-        row.setLayoutData(gd);
 
-        final DatePicker dateFrom = new DatePicker(row, SWT.NONE, "", !dateOnly, 0);
+        final DatePicker dateFrom = new DatePicker(value, SWT.NONE, "", !dateOnly, 0);
         dateFrom.setBackground(value.getDisplay().getSystemColor(SWT.COLOR_LIST_BACKGROUND));
         dateFrom.setLayoutData(new GridData(SWT.FILL, SWT.NONE, true, false));
-        final DatePicker dateTo = new DatePicker(row, SWT.NONE, "", !dateOnly, 23);
-        dateTo.setLayoutData(new GridData(SWT.FILL, SWT.NONE, true, false));
-        dateTo.setBackground(value.getDisplay().getSystemColor(SWT.COLOR_LIST_BACKGROUND));
         dateFrom.addPickerSelectionListener(new SelectionAdapter() {
 
             @Override
             public void widgetSelected(SelectionEvent e) {
-                writeDate(dateFrom, dateTo);
-            }
-        });
-        dateTo.addPickerSelectionListener(new SelectionAdapter() {
-
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                writeDate(dateFrom, dateTo);
+                writeDate(dateFrom);
             }
         });
         if (condition.getValue() != null) {
-            String[] args = condition.getValue().split("-");
-            if (args.length > 0) {
-                Calendar fromDate = Util.parseTimestampInSeconds(args[0]);
+            String arg = condition.getValue();
+            try {
+                Calendar fromDate = Util.parseTimestampInSeconds(arg);
                 if (fromDate.getTimeInMillis() != 0) {
                     dateFrom.setDate(fromDate);
                 }
-                if (args.length > 1) {
-                    Calendar toDate = Util.parseTimestampInSeconds(args[1]);
-                    long timeInMillis = toDate.getTimeInMillis();
-                    long maxValue = Long.MAX_VALUE;
-                    if (timeInMillis < maxValue - 1000) {
-                        dateTo.setDate(toDate);
-                    }
-                }
+            } catch (NumberFormatException nfe) {
+                nfe.printStackTrace();
             }
         }
     }
 
-    private void writeDate(final DatePicker dateFrom, final DatePicker dateTo) {
+    private void writeDate(final DatePicker dateFrom) {
         String dateFromText = dateFrom.getDate() == null ? "0" : Util.formatTimestampInSeconds(dateFrom.getDate());
-        String dateToText = dateTo.getDate() == null ? String.valueOf(Long.MAX_VALUE / 1000) : Util.formatTimestampInSeconds(dateTo
-                        .getDate());
-        String dateRangeString = dateFromText + "-" + dateToText;
-        condition.setValue(dateRangeString);
+        condition.setValue(dateFromText);
     }
 
     private void addUser(GridData gd) {
-        condition.setType(Type.IS_IN);
         configureForTop();
         Environment environment = type.getTypes().getEnvironment();
         final WebIssuesUserSelector text = new WebIssuesUserSelector(environment.getUsers().values(), environment, value, SWT.NONE,
@@ -316,38 +357,76 @@ class AttributeRow {
         }
     }
 
-    private void addProjects(GridData gd) {
-        final org.eclipse.swt.widgets.List itemList = addList(gd);
-        for (Project project : type.getTypes().getEnvironment().getProjects().values()) {
-            // Only add projects that contain folder of the selected type
-            int ofThisType = 0;
-            for (Folder folder : project.values()) {
-                if (folder.getType().equals(type)) {
-                    ofThisType++;
+    private void addProjects(GridData gd, boolean multiple) {
+        if (multiple) {
+            final org.eclipse.swt.widgets.List itemList = addList(gd);
+            for (Project project : type.getTypes().getEnvironment().getProjects().values()) {
+                // Only add projects that contain folder of the selected type
+                int ofThisType = 0;
+                for (Folder folder : project.values()) {
+                    if (folder.getType().equals(type)) {
+                        ofThisType++;
+                    }
+                }
+                if (ofThisType > 0) {
+                    itemList.add(project.getName());
                 }
             }
-            if (ofThisType > 0) {
-                itemList.add(project.getName());
+            configureItemList(itemList);
+        } else {
+            final org.eclipse.swt.widgets.Combo itemList = addChoice(gd);
+            for (Project project : type.getTypes().getEnvironment().getProjects().values()) {
+                // Only add projects that contain folder of the selected type
+                int ofThisType = 0;
+                for (Folder folder : project.values()) {
+                    if (folder.getType().equals(type)) {
+                        ofThisType++;
+                    }
+                }
+                if (ofThisType > 0) {
+                    itemList.add(project.getName());
+                }
             }
+            configureItemChoice(itemList);
         }
-        configureItemList(itemList);
     }
 
-    private void addFolders(GridData gd) {
-        final org.eclipse.swt.widgets.List itemList = addList(gd);
-        for (Project project : type.getTypes().getEnvironment().getProjects().values()) {
-            // Only add folders that are of this type
-            for (Folder folder : project.values()) {
-                if (folder.getType().equals(type)) {
-                    itemList.add(folder.getName());
+    private void addFolders(GridData gd, boolean multiple) {
+        if (multiple) {
+            final org.eclipse.swt.widgets.List itemList = addList(gd);
+            for (Project project : type.getTypes().getEnvironment().getProjects().values()) {
+                // Only add folders that are of this type
+                for (Folder folder : project.values()) {
+                    if (folder.getType().equals(type)) {
+                        itemList.add(folder.getName());
+                    }
                 }
             }
+            configureItemList(itemList);
+        } else {
+            final org.eclipse.swt.widgets.Combo itemList = addChoice(gd);
+            for (Project project : type.getTypes().getEnvironment().getProjects().values()) {
+                // Only add folders that are of this type
+                for (Folder folder : project.values()) {
+                    if (folder.getType().equals(type)) {
+                        itemList.add(folder.getName());
+                    }
+                }
+            }
+            configureItemChoice(itemList);
         }
-        configureItemList(itemList);
+    }
+
+    private org.eclipse.swt.widgets.Combo addChoice(GridData gd) {
+        configureForTop();
+        final org.eclipse.swt.widgets.Combo itemChoice = new org.eclipse.swt.widgets.Combo(value, SWT.BORDER | SWT.MULTI
+                        | SWT.V_SCROLL);
+        itemChoice.setBackground(value.getDisplay().getSystemColor(SWT.COLOR_LIST_BACKGROUND));
+        itemChoice.setLayoutData(gd);
+        return itemChoice;
     }
 
     private org.eclipse.swt.widgets.List addList(GridData gd) {
-        condition.setType(Type.IS_IN);
         configureForTop();
         final org.eclipse.swt.widgets.List itemList = new org.eclipse.swt.widgets.List(value, SWT.BORDER | SWT.MULTI | SWT.V_SCROLL);
         itemList.setBackground(value.getDisplay().getSystemColor(SWT.COLOR_LIST_BACKGROUND));
@@ -384,6 +463,29 @@ class AttributeRow {
         setValueForSelection(itemList);
     }
 
+    private void configureItemChoice(final org.eclipse.swt.widgets.Combo itemChoice) {
+        itemChoice.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetDefaultSelected(SelectionEvent e) {
+                widgetSelected(e);
+            }
+
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                setValueForSelection(itemChoice);
+            }
+        });
+        if (!Util.isNullOrBlank(condition.getValue())) {
+            itemChoice.select(Arrays.asList(itemChoice.getItems()).indexOf(condition.getValue()));
+        }
+        setValueForSelection(itemChoice);
+    }
+
+    private void setValueForSelection(final org.eclipse.swt.widgets.Combo itemChoice) {
+        int sel = itemChoice.getSelectionIndex();
+        condition.setValue(sel == -1 ? null : itemChoice.getItem(sel));
+    }
+
     private void setValueForSelection(final org.eclipse.swt.widgets.List itemList) {
         StringBuilder bui = new StringBuilder();
         for (int sel : itemList.getSelectionIndices()) {
@@ -395,118 +497,71 @@ class AttributeRow {
         condition.setValue(bui.toString());
     }
 
-    private void addEnum(Attribute attribute, GridData gd) {
-        final org.eclipse.swt.widgets.List itemList = addList(gd);
-        if (!attribute.isRequired()) {
-            itemList.add("");
+    private void addEnum(Attribute attribute, GridData gd, boolean multiple) {
+        if (multiple) {
+            final org.eclipse.swt.widgets.List itemList = addList(gd);
+            if (!attribute.isRequired()) {
+                itemList.add("");
+            }
+            for (String option : attribute.getOptions()) {
+                itemList.add(option);
+            }
+            configureItemList(itemList);
+        } else {
+            final org.eclipse.swt.widgets.Combo itemList = addChoice(gd);
+            if (!attribute.isRequired()) {
+                itemList.add("");
+            }
+            for (String option : attribute.getOptions()) {
+                itemList.add(option);
+            }
+            configureItemChoice(itemList);
+
         }
-        for (String option : attribute.getOptions()) {
-            itemList.add(option);
-        }
-        configureItemList(itemList);
     }
 
     private void addNumeric(Attribute attribute, GridData gd) {
         comboGridData.verticalAlignment = SWT.CENTER;
         valueGridData.verticalAlignment = SWT.CENTER;
         buttonGridData.verticalAlignment = SWT.CENTER;
-        Composite row = new Composite(value, SWT.NONE);
-        row.setBackground(value.getDisplay().getSystemColor(SWT.COLOR_LIST_BACKGROUND));
-        row.setLayout(new GridLayout(3, true));
-        row.setLayoutData(gd);
-        final Spinner min = new Spinner(row, SWT.NONE);
-        min.setBackground(value.getDisplay().getSystemColor(SWT.COLOR_LIST_BACKGROUND));
-        min.setDigits(attribute.getDecimalPlaces());
-        min.setMinimum((int) attribute.getMinValue());
-        min.setMaximum((int) attribute.getMaxValue());
-        min.setIncrement(1);
-        min.setLayoutData(new GridData(SWT.FILL, SWT.NONE, true, false));
-        final Button range = new Button(row, SWT.CHECK);
-        range.setBackground(value.getDisplay().getSystemColor(SWT.COLOR_LIST_BACKGROUND));
-        final Spinner max = new Spinner(row, SWT.NONE);
-        max.setBackground(value.getDisplay().getSystemColor(SWT.COLOR_LIST_BACKGROUND));
-        min.addSelectionListener(new SelectionListener() {
+        final Spinner val = new Spinner(value, SWT.NONE);
+        val.setBackground(value.getDisplay().getSystemColor(SWT.COLOR_LIST_BACKGROUND));
+        val.setDigits(attribute.getDecimalPlaces());
+        val.setMinimum((int) attribute.getMinValue());
+        val.setMaximum((int) attribute.getMaxValue());
+        val.setIncrement(1);
+        val.setLayoutData(new GridData(SWT.FILL, SWT.NONE, true, false));
+        val.addSelectionListener(new SelectionListener() {
 
             @Override
             public void widgetSelected(SelectionEvent e) {
-                if (!range.getSelection()) {
-                    max.setSelection(min.getSelection());
-                    condition.setValue(String.valueOf(min.getSelection()));
-                } else {
-                    writeRange(min, max);
-                }
+                writeVal(val);
             }
 
             @Override
             public void widgetDefaultSelected(SelectionEvent e) {
-            }
-        });
-        max.addSelectionListener(new SelectionListener() {
-
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                if (range.getSelection()) {
-                    writeRange(min, max);
-                }
-            }
-
-            @Override
-            public void widgetDefaultSelected(SelectionEvent e) {
-                // widgetSelected(e);
-            }
-        });
-        range.setText("Range");
-        max.setDigits(attribute.getDecimalPlaces());
-        max.setMinimum((int) attribute.getMinValue());
-        max.setMaximum((int) attribute.getMaxValue());
-        max.setIncrement(1);
-        max.setLayoutData(new GridData(SWT.FILL, SWT.NONE, true, false));
-        range.addSelectionListener(new SelectionListener() {
-
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                max.setEnabled(range.getSelection());
-                if (!range.getSelection()) {
-                    max.setSelection(min.getSelection());
-                    condition.setType(Type.IS_EQUAL_TO);
-                    condition.setValue(String.valueOf(min.getSelection()));
-                } else {
-                    condition.setType(Type.IS_IN);
-                    writeRange(min, max);
-                }
-            }
-
-            @Override
-            public void widgetDefaultSelected(SelectionEvent e) {
-                // widgetSelected(e);
             }
         });
 
         String attrVal = condition.getValue();
         if (attrVal != null) {
-            if (condition.getType().equals(Type.IS_IN)) {
+            if (condition.getType().equals(ConditionType.IN)) {
                 String[] args = attrVal.split("-");
-                max.setSelection((int) Double.parseDouble(args[1]));
-                min.setSelection((int) Double.parseDouble(args[0]));
+                val.setSelection((int) Double.parseDouble(args[0]));
             } else {
-                max.setSelection(min.getSelection());
-                min.setSelection(Integer.parseInt(attrVal));
+                val.setSelection(Integer.parseInt(attrVal));
             }
-            range.setSelection(condition.getType().equals(Type.IS_IN));
         } else {
-            range.setSelection(true);
-            min.setSelection((int) attribute.getMinValue());
-            max.setSelection((int) attribute.getMaxValue());
-            condition.setType(Type.IS_IN);
-            writeRange(min, max);
+            val.setSelection((int) attribute.getMinValue());
+            writeVal(val);
         }
     }
 
-    private void writeRange(final Spinner min, final Spinner max) {
-        condition.setValue(String.valueOf(min.getSelection()) + "-" + String.valueOf(max.getSelection()));
+    private void writeVal(final Spinner val) {
+        condition.setValue(String.valueOf(val.getSelection()));
     }
 
-    public WebIssuesFilterCondition getCondition() {
+    public Condition getCondition() {
         return condition;
     }
 }

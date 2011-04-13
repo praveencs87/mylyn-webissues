@@ -1,22 +1,27 @@
 package net.sf.webissues.api;
 
-import java.io.IOException;
 import java.io.Serializable;
 import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import org.apache.commons.httpclient.HttpException;
-import org.apache.commons.httpclient.HttpMethod;
 
 public class Views extends HashMap<Integer, View> implements Serializable {
 
     private static final long serialVersionUID = 156091835846857151L;
     private final Environment environment;
+    private Type type;
 
-    protected Views(Environment environment) {
+    protected Views(Environment environment, Type folderType) {
         super();
         this.environment = environment;
+        this.type = folderType;
+    }
+    
+    /**
+     * Get the folder type this view is attached to.
+     * 
+     * @return folder type
+     */
+    public Type getType() {
+        return type;
     }
 
     /**

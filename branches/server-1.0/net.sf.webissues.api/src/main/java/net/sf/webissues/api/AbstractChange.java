@@ -8,7 +8,13 @@ import java.util.Calendar;
 public abstract class AbstractChange implements Entity {
 
     public enum Type {
-        ISSUE_CREATED, ISSUE_RENAMED, VALUE_CHANGED, COMMENT_ADDED, FILE_ADDED, ISSUE_MOVED;
+        ISSUE_CREATED("Issue Created"), ISSUE_RENAMED("Issue Renamed"), VALUE_CHANGED("Value changed"), COMMENT_ADDED("Comment"), FILE_ADDED("File attached"), ISSUE_MOVED("Issue moved");
+        
+        private String label;
+
+        private Type(String label) {
+            this.label = label;
+        }
 
         public final static Type fromCode(int code) {
             switch (code) {
@@ -45,6 +51,10 @@ public abstract class AbstractChange implements Entity {
                     return 0;
             }
             throw new IllegalArgumentException();
+        }
+        
+        public String getLabel() {
+            return label;
         }
     }
 
