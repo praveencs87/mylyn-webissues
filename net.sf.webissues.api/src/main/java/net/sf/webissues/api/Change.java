@@ -3,30 +3,26 @@ package net.sf.webissues.api;
 import java.util.Calendar;
 import java.util.List;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
 /**
  * Represents a single change made to an issue.
  */
 public class Change extends AbstractChange {
 
-    private final static Log LOG = LogFactory.getLog(Change.class);
-
     /*
      * Internal constructor.
      */
-    protected Change(IssueDetails issueDetails, Type type, int id, Calendar createdDate, User createdUser, Calendar modifiedDate, User modifiedUser,
-                     Attribute attribute, String oldValue, String newValue) {
+    protected Change(IssueDetails issueDetails, Type type, int id, Calendar createdDate, User createdUser, Calendar modifiedDate,
+                     User modifiedUser, Attribute attribute, String oldValue, String newValue) {
         super(issueDetails, type, id, createdDate, createdUser, modifiedDate, modifiedUser, attribute, oldValue, newValue);
     }
 
     /*
      * Internal constructor.
      */
-    protected Change(IssueDetails issueDetails, int id, Calendar createdDate, User createdUser, Calendar modifiedDate, User modifiedUser, Attribute attribute,
-                     String oldValue, String newValue) {
-        this(issueDetails, Type.VALUE_CHANGED, id, createdDate, createdUser, modifiedDate, modifiedUser, attribute, oldValue, newValue);
+    protected Change(IssueDetails issueDetails, int id, Calendar createdDate, User createdUser, Calendar modifiedDate,
+                     User modifiedUser, Attribute attribute, String oldValue, String newValue) {
+        this(issueDetails, Type.VALUE_CHANGED, id, createdDate, createdUser, modifiedDate, modifiedUser, attribute, oldValue,
+                        newValue);
     }
 
     /**
@@ -52,12 +48,12 @@ public class Change extends AbstractChange {
             int attributeId = Integer.parseInt(response.get(5));
             Attribute attributeObject = environment.getTypes().getAttribute(attributeId);
             if (attributeObject == null) {
-                LOG.debug("Invalid change attribute ID " + attributeId + ", will assume this is the title?");
+                Client.LOG.debug("Invalid change attribute ID " + attributeId + ", will assume this is the title?");
             }
             User user = users.get(Integer.parseInt(response.get(4)));
             Calendar date = Util.parseTimestampInSeconds(response.get(3));
-            return new Change(issueDetails, Integer.parseInt(response.get(1)), date, user, date, user, attributeObject, response.get(6),
-                            response.get(7));
+            return new Change(issueDetails, Integer.parseInt(response.get(1)), date, user, date, user, attributeObject,
+                            response.get(6), response.get(7));
         } else {
             // TODO Change needs to support the new fields
             if (response.size() != 14 || !response.get(0).equals("H")) {

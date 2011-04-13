@@ -121,10 +121,10 @@ public class Util {
             }
         }
         if (inQuote) {
-            throw new IllegalArgumentException("Unbalanced quotes");
+            throw new IllegalArgumentException("Unbalanced quotes in '" + line + "'");
         }
         if (inGroup) {
-            throw new IllegalArgumentException("Unbalanced braces");
+            throw new IllegalArgumentException("Unbalanced braces in '" + line + "'");
         }
         if (escaped) {
             throw new IllegalArgumentException("Incomplete escape sequence.");

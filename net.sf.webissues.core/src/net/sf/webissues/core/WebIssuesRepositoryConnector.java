@@ -36,14 +36,15 @@ import java.util.logging.Logger;
 import net.sf.webissues.api.Access;
 import net.sf.webissues.api.Attribute;
 import net.sf.webissues.api.Client;
+import net.sf.webissues.api.Condition;
 import net.sf.webissues.api.Folder;
 import net.sf.webissues.api.Issue;
 import net.sf.webissues.api.Project;
 import net.sf.webissues.api.ProtocolException;
+import net.sf.webissues.api.Type;
 import net.sf.webissues.api.Util;
 
 import org.apache.commons.httpclient.HttpException;
-import org.eclipse.core.internal.runtime.Log;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -51,11 +52,10 @@ import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.mylyn.commons.net.Policy;
-import org.eclipse.mylyn.internal.provisional.tasks.core.TasksUtil;
-import org.eclipse.mylyn.internal.tasks.core.TaskRepositoryManager;
 import org.eclipse.mylyn.tasks.core.AbstractRepositoryConnector;
 import org.eclipse.mylyn.tasks.core.IRepositoryQuery;
 import org.eclipse.mylyn.tasks.core.ITask;
+import org.eclipse.mylyn.tasks.core.RepositoryStatus;
 import org.eclipse.mylyn.tasks.core.TaskRepository;
 import org.eclipse.mylyn.tasks.core.TaskRepositoryLocationFactory;
 import org.eclipse.mylyn.tasks.core.data.TaskAttribute;
@@ -234,32 +234,57 @@ public class WebIssuesRepositoryConnector extends AbstractRepositoryConnector {
     @Override
     public IStatus performQuery(TaskRepository repository, IRepositoryQuery query, TaskDataCollector resultCollector,
                                 ISynchronizationSession session, IProgressMonitor monitor) {
+        List<Throwable> errors = new ArrayList<Throwable>();
+        monitor.beginTask("Querying repository", IProgressMonitor.UNKNOWN);
         try {
-            monitor.beginTask("Querying repository", IProgressMonitor.UNKNOWN);
             WebIssuesClient client;
-
-            client = getClientManager().getClient(repository, monitor);
-            WebIssuesFilterQueryAdapter search = new WebIssuesFilterQueryAdapter(query, client.getEnvironment());
             Map<String, ITask> taskById = null;
+            int queries = 0;
+            try {
+                client = getClientManager().getClient(repository, monitor);
+            } catch (IOException ioe) {
+                LOG.log(Level.SEVERE, "IO Error.", ioe);
+                return WebIssuesCorePlugin.toStatus(ioe, repository);
+            } catch (ProtocolException e) {
+                LOG.log(Level.SEVERE, "Protocol Error.", e);
+                return WebIssuesCorePlugin.toStatus(e, repository);
+            }
+
+            // Let the query run on each project, only reporting errors at the
+            // end
             for (Project project : client.getEnvironment().getProjects().values()) {
                 for (Folder folder : project.values()) {
-                    if (folder.getType().equals(search.getType())) {
-                        taskById = doFolder(repository, resultCollector, session, monitor, client, search, taskById, folder);
-                    } else {
-                        LOG.warning("    " + folder + " is not of type " + search.getType());
+                    try {
+                        queries++;
+                        WebIssuesFilterQueryAdapter search = new WebIssuesFilterQueryAdapter(query, client.getEnvironment());
+                        if (folder.getType().equals(search.getType())) {
+                            taskById = doFolder(repository, resultCollector, session, monitor, client, search, taskById, folder);
+                        } else {
+                            LOG.warning("    " + folder + " is not of type " + search.getType());
+                        }
+                    } catch (IOException ioe) {
+                        LOG.log(Level.SEVERE, "IO Error.", ioe);
+                        return WebIssuesCorePlugin.toStatus(ioe, repository);
+                    } catch (ProtocolException e) {
+                        LOG.log(Level.SEVERE, "Protocol Error.", e);
+                        errors.add(e);
+                    } catch (CoreException e) {
+                        LOG.log(Level.SEVERE, "Core Error.", e);
+                        errors.add(e);
                     }
                 }
             }
-            return Status.OK_STATUS;
-        } catch (IOException ioe) {
-            LOG.log(Level.SEVERE, "IO Error.", ioe);
-            return WebIssuesCorePlugin.toStatus(ioe, repository);
-        } catch (CoreException e) {
-            LOG.log(Level.SEVERE, "Core Error.", e);
-            return WebIssuesCorePlugin.toStatus(e, repository);
-        } catch (ProtocolException e) {
-            LOG.log(Level.SEVERE, "Protocol Error.", e);
-            return WebIssuesCorePlugin.toStatus(e, repository);
+
+            if (errors.size() == 0) {
+                return Status.OK_STATUS;
+            } else if (errors.size() == 1) {
+                return WebIssuesCorePlugin.toStatus(errors.get(0), repository);
+            } else if (errors.size() == queries) {
+                return WebIssuesCorePlugin.toStatus(new IOException("All queries failed."), repository);
+            } else {
+                return new RepositoryStatus(repository.getRepositoryUrl(), IStatus.WARNING, WebIssuesCorePlugin.ID_PLUGIN,
+                                RepositoryStatus.ERROR_REPOSITORY, errors.size() + " out of " + queries + " failed.");
+            }
         } finally {
             monitor.done();
         }
@@ -270,46 +295,45 @@ public class WebIssuesRepositoryConnector extends AbstractRepositoryConnector {
                                         WebIssuesFilterQueryAdapter search, Map<String, ITask> taskById, Folder folder)
                     throws HttpException, IOException, ProtocolException, CoreException {
         Collection<? extends Issue> folderIssues = client.getFolderIssues(folder, 0, monitor);
-        System.out.println("Folder " + folder + " has + " + folderIssues.size() + " issues");
         for (Issue issue : folderIssues) {
             boolean matches = true;
-            for (WebIssuesFilterCondition condition : search.getConditions()) {
+            for (Condition condition : search.getAllConditions()) {
                 String val = condition.getValue();
-                String name = condition.getName();
-                if (name.equals(WebIssuesFilterCondition.PROJECT)) {
-                    matches = match(issue, matches, condition, val, issue.getFolder().getProject().getName());
-                } else if (name.equals(WebIssuesFilterCondition.FOLDER)) {
-                    matches = match(issue, matches, condition, val, issue.getFolder().getName());
-                } else if (name.equals(WebIssuesFilterCondition.NAME)) {
-                    matches = match(issue, matches, condition, val, issue.getName());
-                } else if (name.equals(WebIssuesFilterCondition.DATE_CREATED)) {
-                    matches = match(issue, matches, condition, val,
-                        String.valueOf((issue.getCreatedDate().getTimeInMillis() / 1000)));
-                } else if (name.equals(WebIssuesFilterCondition.DATE_MODIFIED)) {
-                    matches = match(issue, matches, condition, val,
-                        String.valueOf((issue.getModifiedDate().getTimeInMillis() / 1000)));
-                } else if (name.equals(WebIssuesFilterCondition.USER_CREATED)) {
-                    matches = match(issue, matches, condition, val, issue.getCreatedUser().getLogin());
-                } else if (name.equals(WebIssuesFilterCondition.USER_MODIFIED)) {
-                    matches = match(issue, matches, condition, val, issue.getModifiedUser().getLogin());
-                } else {
-                    Attribute key = search.getType().getByName(name);
-                    if (key == null) {
-                        System.err.println("No attribute '" + name + "'");
-                    } else {
-                        String issueAttributeValue = Util.nonNull(issue.get(key));
-                        try {
-                            if (key.getType().equals(Attribute.AttributeType.DATETIME)) {
-                                issueAttributeValue = getDateValue(key.isDateOnly(), issueAttributeValue);
-                            }
-                            matches = match(issue, matches, condition, val, issueAttributeValue);
-                        } catch (ParseException e) {
-                            matches = false;
-                        }
+                Attribute attr = condition.getAttribute();
+                try {
+                    String issueAttributeValue = null;
+                    switch (attr.getId()) {
+                        case Type.PROJECT_ATTR_ID:
+                            issueAttributeValue = issue.getFolder().getProject().getName();
+                            break;
+                        case Type.FOLDER_ATTR_ID:
+                            issueAttributeValue = issue.getFolder().getName();
+                            break;
+                        case Type.NAME_ATTR_ID:
+                            issueAttributeValue = issue.getName();
+                            break;
+                        case Type.CREATED_DATE_ATTR_ID:
+                            issueAttributeValue = String.valueOf((issue.getCreatedDate().getTimeInMillis() / 1000));
+                            break;
+                        case Type.MODIFIED_DATE_ATTR_ID:
+                            issueAttributeValue = String.valueOf((issue.getModifiedDate().getTimeInMillis() / 1000));
+                            break;
+                        case Type.CREATED_BY_ATTR_ID:
+                            issueAttributeValue = issue.getCreatedUser().getLogin();
+                            break;
+                        case Type.MODIFIED_BY_ATTR_ID:
+                            issueAttributeValue = issue.getCreatedUser().getLogin();
+                            break;
+                        default:
+                            issueAttributeValue = issue.get(attr);
                     }
-                    if (condition.isNegate()) {
-                        matches = !matches;
+                    if (issueAttributeValue == null) {
+                        issueAttributeValue = "";
                     }
+                    matches = match(issue, matches, condition, val, issueAttributeValue);
+                } catch (NumberFormatException nfe) {
+                    nfe.printStackTrace(System.out);
+                    matches = false;
                 }
                 if (!matches) {
                     break;
@@ -317,7 +341,6 @@ public class WebIssuesRepositoryConnector extends AbstractRepositoryConnector {
             }
 
             if (matches) {
-                System.out.println("    " + issue.getId() + " matches");
                 TaskData taskData = taskDataHandler.createTaskDataFromIssue(client, repository, issue, monitor);
                 taskData.setPartial(true);
 
@@ -334,8 +357,6 @@ public class WebIssuesRepositoryConnector extends AbstractRepositoryConnector {
                     }
                 }
                 resultCollector.accept(taskData);
-            } else {
-                System.out.println("    " + issue.getId() + " does not match");
             }
         }
         return taskById;
@@ -346,31 +367,46 @@ public class WebIssuesRepositoryConnector extends AbstractRepositoryConnector {
         return String.valueOf(fmt.parse(issueAttributeValue).getTime() / 1000);
     }
 
-    private boolean match(Issue issue, boolean matches, WebIssuesFilterCondition condition, String val, String issueAttributeValue) {
+    private boolean match(Issue issue, boolean matches, Condition condition, String val, String issueAttributeValue) {
+        val = val.toLowerCase();
+        issueAttributeValue = issueAttributeValue.toLowerCase();
         switch (condition.getType()) {
-            case IS_EMPTY:
-                matches = Util.isNullOrBlank(issueAttributeValue);
-            case IS_EQUAL_TO:
+            case BEG:
+                matches = issueAttributeValue.startsWith(val);
+                break;
+            case END:
+                matches = issueAttributeValue.endsWith(val);
+                break;
+            case CON:
+                matches = issueAttributeValue.contains(val);
+                break;
+            case EQ:
                 matches = issueAttributeValue.equals(val);
                 break;
-            case IS_IN:
-                if (val.indexOf("-") != -1) {
-                    // Range
-                    String[] args = val.split("-");
-                    double start = Double.parseDouble(args[0]);
-                    double end = Double.parseDouble(args[1]);
-                    try {
-                        double thisVal = Double.parseDouble(issueAttributeValue);
-                        matches = thisVal >= start && thisVal <= end;
-                    } catch (NumberFormatException nfe) {
-                        matches = false;
-                    }
-                } else {
-                    // Enum
-                    matches = Arrays.asList(val.split(":")).contains(issueAttributeValue);
-                }
+            case NEQ:
+                matches = !issueAttributeValue.equals(val);
+                break;
+            case GT:
+                matches = parseDouble(issueAttributeValue, condition) > parseDouble(val, condition);
+                break;
+            case GTE:
+                matches = parseDouble(issueAttributeValue, condition) >= parseDouble(val, condition);
+                break;
+            case LT:
+                matches = parseDouble(issueAttributeValue, condition) > parseDouble(val, condition);
+                break;
+            case LTE:
+                matches = parseDouble(issueAttributeValue, condition) >= parseDouble(val, condition);
+                break;
+            case IN:
+                matches = Arrays.asList(val.split(":")).contains(issueAttributeValue);
+                break;
         }
         return matches;
+    }
+
+    private double parseDouble(String val, Condition condition) {
+        return Double.parseDouble(val);
     }
 
     @Override

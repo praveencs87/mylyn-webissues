@@ -5,6 +5,8 @@ import java.io.Serializable;
 import java.util.HashMap;
 import java.util.List;
 
+import net.sf.webissues.api.Attribute.AttributeType;
+
 import org.apache.commons.httpclient.HttpException;
 import org.apache.commons.httpclient.HttpMethod;
 
@@ -16,12 +18,37 @@ public class Type extends HashMap<Integer, Attribute> implements Serializable {
     private final Types types;
     private Views views;
 
+    public final static int PROJECT_ATTR_ID = 2147482645;
+    public final static int FOLDER_ATTR_ID = 2147482646; 
+    public final static int NAME_ATTR_ID = 2147482647; 
+    public final static int ID_ATTR_ID = 2147482648;
+    public final static int CREATED_DATE_ATTR_ID = 2147482649;
+    public final static int CREATED_BY_ATTR_ID = 2147482650;
+    public final static int MODIFIED_DATE_ATTR_ID = 2147482651;
+    public final static int MODIFIED_BY_ATTR_ID = 2147482652;
+
     protected Type(Types types, int id, String name) {
         super();
         this.types = types;
         this.id = id;
         this.name = name;
-        views = new Views(types.getEnvironment());
+        views = new Views(types.getEnvironment(), this);
+        addAttribute(new Attribute(this, PROJECT_ATTR_ID, "Project", AttributeType.ENUM, true));
+        addAttribute(new Attribute(this, FOLDER_ATTR_ID, "Folder", AttributeType.ENUM, true));
+        addAttribute(new Attribute(this, NAME_ATTR_ID, "Name", AttributeType.TEXT, true));
+        addAttribute(new Attribute(this, ID_ATTR_ID, "ID", AttributeType.NUMERIC, true));
+        Attribute createdAttr = new Attribute(this, CREATED_DATE_ATTR_ID, "Created Date", AttributeType.DATETIME, true);
+        createdAttr.setDateOnly(true);
+        addAttribute(createdAttr);
+        addAttribute(new Attribute(this, CREATED_BY_ATTR_ID, "Created By", AttributeType.USER, true));
+        Attribute modifiedAttr = new Attribute(this, MODIFIED_DATE_ATTR_ID, "Modified Date", AttributeType.DATETIME, true);
+        modifiedAttr.setDateOnly(true);
+        addAttribute(modifiedAttr);
+        addAttribute(new Attribute(this, MODIFIED_BY_ATTR_ID, "Modified By", AttributeType.USER, true));
+    }
+    
+    public void addAttribute(Attribute attr) {
+        put(attr.getId(), attr);
     }
 
     @Override
@@ -62,7 +89,7 @@ public class Type extends HashMap<Integer, Attribute> implements Serializable {
         try {
             List<List<String>> response = client.readResponse(method.getResponseBodyAsStream());
             int id = Integer.parseInt(response.get(0).get(1));
-            Attribute attr = new Attribute(this, id, name, definition);
+            Attribute attr = new Attribute(this, id, name, definition, false);
             put(id, attr);
             return attr;
         } finally {

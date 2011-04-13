@@ -105,7 +105,7 @@ public class AbstractClientTest {
             for (Folder folder : project.values()) {
                 LOG.info("    F: " + folder);
                 for (Issue issue : folder.getIssues(op, 0)) {
-                    LOG.info("        I: " + issue.getIssueDetails(op));
+                    LOG.info("        I: " + issue.toString());
                 }
             }
         }

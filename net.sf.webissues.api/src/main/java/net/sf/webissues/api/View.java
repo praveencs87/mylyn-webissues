@@ -4,18 +4,15 @@ import java.io.IOException;
 import java.io.Serializable;
 
 import org.apache.commons.httpclient.HttpException;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 
 public class View extends EntityMap<Alert> implements Serializable {
     private static final long serialVersionUID = -2967172058163844285L;
 
-    static final Log LOG = LogFactory.getLog(View.class);
 
     private int id;
     private String name;
     private Views views;
-    private String definition;
+    private ViewDefinition definition;
     private boolean userView;
 
     protected View(Views views, int id, String name) {
@@ -42,11 +39,11 @@ public class View extends EntityMap<Alert> implements Serializable {
         this.views = views;
     }
 
-    public String getDefinition() {
+    public ViewDefinition getDefinition() {
         return definition;
     }
 
-    public void setDefinition(String definition) {
+    public void setDefinition(ViewDefinition definition) {
         this.definition = definition;
     }
 
@@ -73,12 +70,12 @@ public class View extends EntityMap<Alert> implements Serializable {
     public String getName() {
         return name;
     }
-    
+
     /**
      * Rename this view.
      * 
      * @throws IOException on any error
-     * @throws ProtocolException 
+     * @throws ProtocolException
      */
     public void rename(Operation operation, final String newName) throws IOException, ProtocolException {
         final Client client = getViews().getEnvironment().getClient();
@@ -90,12 +87,12 @@ public class View extends EntityMap<Alert> implements Serializable {
             }
         }, operation);
     }
-    
+
     /**
      * Delete this view.
      * 
      * @throws IOException on any error
-     * @throws ProtocolException 
+     * @throws ProtocolException
      */
     public void delete(Operation operation) throws IOException, ProtocolException {
         final Client client = getViews().getEnvironment().getClient();
@@ -110,14 +107,13 @@ public class View extends EntityMap<Alert> implements Serializable {
 
     @Override
     public String toString() {
-        return "View [id=" + id + ", name=" + name + ", definition=" + definition + ", userView=" + userView
-                        + "]";
+        return "View [id=" + id + ", name=" + name + ", definition=" + definition + ", userView=" + userView + ", alerts="
+                        + super.values().toString() + "]";
     }
     /*
      * 
-        $query = 'SELECT view_id, type_id, view_name, view_def, ( CASE WHEN user_id IS NULL THEN 1 ELSE 0 END ) AS is_public'
-            . ' FROM {views}'
-            . ' WHERE user_id = %d OR user_id IS NULL';
+     * $query = 'SELECT view_id, type_id, view_name, view_def, ( CASE WHEN
+     * user_id IS NULL THEN 1 ELSE 0 END ) AS is_public' . ' FROM {views}' . '
+     * WHERE user_id = %d OR user_id IS NULL';
      */
 }
-

@@ -239,7 +239,7 @@ public class WebIssuesTaskDataHandler extends AbstractTaskDataHandler {
         TaskAttribute priorityAttribute = data.getRoot().getAttribute(TaskAttribute.PRIORITY);
 
         for (Attribute attr : type.values()) {
-            if (priorityAttribute == null || !attr.getName().equals("Priority")) {
+            if (!attr.isBuiltIn() && ( priorityAttribute == null || !attr.getName().equals("Priority"))) {
                 String defaultValue = attr.getDefaultValue();
                 String attributeId = WEBISSUES_ATTRIBUTE_KEY_PREFIX + attr.getId();
                 TaskAttribute taskAttr = data.getRoot().createAttribute(attributeId);
@@ -348,6 +348,7 @@ public class WebIssuesTaskDataHandler extends AbstractTaskDataHandler {
             mapper.setChangeId(String.valueOf(count));
             mapper.setUser(repository.createPerson(change.getModifiedUser().getName()));
             mapper.setAttributeName(change.getAttribute() == null ? "Name" : change.getAttribute().getName());
+            mapper.setType(change.getType());
             mapper.setOldValue(change.getOldValue());
             mapper.setNewValue(change.getNewValue());
             mapper.setDate(change.getModifiedDate());

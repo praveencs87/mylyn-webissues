@@ -2,12 +2,15 @@ package net.sf.webissues.api;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.text.ParseException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.httpclient.HttpException;
 import org.apache.commons.httpclient.HttpMethod;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 public class Types extends HashMap<Integer, Type> implements Serializable {
 
@@ -67,7 +70,7 @@ public class Types extends HashMap<Integer, Type> implements Serializable {
                         if (type == null) {
                             throw new Error("Expected type before attribute");
                         }
-                        type.put(attributeId, new Attribute(type, attributeId, response.get(3), response.get(4)));
+                        type.put(attributeId, new Attribute(type, attributeId, response.get(3), response.get(4), false));
                     } else if (response.get(0).equals("T")) {
                         int typeId = Integer.parseInt(response.get(1));
                         Type type = new Type(this, typeId, response.get(2));
@@ -80,9 +83,15 @@ public class Types extends HashMap<Integer, Type> implements Serializable {
                         boolean userView = response.get(5).equals("1");
                         Type type = typeMap.get(typeId);
                         View view = new View(type.getViews(), viewId, viewName);
-                        view.setDefinition(definition);
-                        view.setUserView(userView);
-                        type.getViews().add(view);
+                        ViewDefinition def;
+                        try {
+                            def = new ViewDefinition(definition, type);
+                            view.setDefinition(def);
+                            view.setUserView(userView);
+                            type.getViews().add(view);
+                        } catch (ParseException e) {
+                            Client.LOG.error("Could not parse view definition '" + definition + "'.", e);
+                        }
                     } else {
                         Client.LOG.warn("Unexpected response \"" + response + "\"");
                     }

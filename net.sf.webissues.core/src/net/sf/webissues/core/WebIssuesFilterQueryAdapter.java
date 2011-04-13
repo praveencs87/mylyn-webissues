@@ -8,6 +8,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.StringTokenizer;
 
+import net.sf.webissues.api.Condition;
 import net.sf.webissues.api.Environment;
 import net.sf.webissues.api.Type;
 import net.sf.webissues.api.Util;
@@ -18,7 +19,7 @@ import org.eclipse.mylyn.tasks.core.IRepositoryQuery;
 public class WebIssuesFilterQueryAdapter {
 
     private static final long serialVersionUID = 5626098838765595799L;
-    private List<WebIssuesFilterCondition> conditions = new ArrayList<WebIssuesFilterCondition>();
+    private List<Condition> conditions = new ArrayList<Condition>();
     private String name;
     private Type type;
     private String searchText;
@@ -29,7 +30,7 @@ public class WebIssuesFilterQueryAdapter {
         super();
     }
 
-    public Collection<WebIssuesFilterCondition> getConditions() {
+    public Collection<Condition> getConditions() {
         return conditions;
     }
 
@@ -62,9 +63,9 @@ public class WebIssuesFilterQueryAdapter {
             } else if (name.equals("searchText")) {
                 searchText = value;
             } else if (name.equals("attribute")) {
-                conditions.add(WebIssuesFilterCondition.fromParameterValue(value, environment));
+                conditions.add(new Condition(value, type));
             } else if (name.equals("viewId")) {
-                view = type.getViews().getByName(value);
+                view = type.getViews().get(Integer.parseInt(value));
             }
         }
     }
@@ -107,8 +108,8 @@ public class WebIssuesFilterQueryAdapter {
         if (view != null) {
             buf.append("&viewId=" + view.getId());
         }
-        for (WebIssuesFilterCondition condition : conditions) {
-            buf.append("&attribute=" + Util.urlEncode(condition.getExpression()));
+        for (Condition condition : conditions) {
+            buf.append("&attribute=" + Util.urlEncode(condition.toParameter()));
         }
         return buf.toString();
     }
@@ -117,8 +118,17 @@ public class WebIssuesFilterQueryAdapter {
         this.type = type;
     }
 
-    public void addCondition(WebIssuesFilterCondition condition) {
+    public void addCondition(Condition condition) {
         conditions.add(condition);
+    }
+
+    public Collection<Condition> getAllConditions() {
+        List<Condition> all = new ArrayList<Condition>();
+        if(view != null && view.getDefinition() != null) {
+            all.addAll(view.getDefinition());
+        }
+        all.addAll(conditions);
+        return all;
     }
 
 }
