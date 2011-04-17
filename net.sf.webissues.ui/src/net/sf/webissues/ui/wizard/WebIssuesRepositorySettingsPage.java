@@ -56,7 +56,7 @@ public class WebIssuesRepositorySettingsPage extends AbstractRepositorySettingsP
         Text field = new Text(parent, SWT.BORDER | SWT.FILL);
         field.setLayoutData(new GridData (SWT.FILL, SWT.CENTER, true, false));
         field.setToolTipText(toolTip);
-        String val = repository == null ? null : repository.getProperty("statusAttributeName");
+        String val = repository == null ? null : repository.getProperty(name);
         field.setText(val == null || val.trim().length() == 0 ? defaultValue : val);
         return field;
     }

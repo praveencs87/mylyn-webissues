@@ -41,18 +41,29 @@ public class Users extends EntityMap<User> implements Serializable {
      * @throws HttpException
      * @throws ProtocolException 
      */
-    public User createUser(String loginId, String name, char[] password) throws HttpException, IOException, ProtocolException {
-        Client client = environment.getClient();
-        HttpMethod method = client.doCommand("ADD USER '" + Util.escape(loginId) + "' '" + Util.escape(name) + "' '"
-                        + Util.escape(new String(password)));
-        try {
-            List<List<String>> response = client.readResponse(method.getResponseBodyAsStream());
-            User u  = new User(client.getEnvironment(), Integer.parseInt(response.get(0).get(1)), loginId, name, Access.NORMAL);
-            add(u);
-            return u;
-        } finally {
-            method.releaseConnection();
-        }
+    public User createUser(final String loginId, final String name, final char[] password, final Operation operation) throws HttpException, IOException, ProtocolException {
+        return environment.getClient().doCall(new Call<User>() {
+            public User call() throws HttpException, IOException, ProtocolException {
+                operation.beginJob("Creating user", 1);
+                try {
+                    Client client = environment.getClient();
+                    HttpMethod method = client.doCommand("ADD USER '" + Util.escape(loginId) + "' '" + Util.escape(name) + "' '"
+                                    + Util.escape(new String(password)));
+                    try {
+                        List<List<String>> response = client.readResponse(method.getResponseBodyAsStream());
+                        User u  = new User(client.getEnvironment(), Integer.parseInt(response.get(0).get(1)), loginId, name, Access.NORMAL);
+                        add(u);
+                        return u;
+                    } finally {
+                        method.releaseConnection();
+                    }
+                } finally {
+                    operation.done();
+                }
+            }
+        }, operation);
+        
+        
     }
 
     /**

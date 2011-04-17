@@ -12,7 +12,7 @@ import org.apache.commons.httpclient.HttpMethod;
 
 /**
  * Each {@link Project} may contain many {@link Folder}s and is of a single
- * {@link Type}. All issues must belong to a folder, so this class provides this
+ * {@link IssueType}. All issues must belong to a folder, so this class provides this
  * {@link #getIssues(Operation, long)} method retrieve all issues in the folder.
  */
 public class Folder implements Serializable, Entity, NamedEntity {
@@ -21,12 +21,12 @@ public class Folder implements Serializable, Entity, NamedEntity {
 
     private int id;
     private String name;
-    private Type type;
+    private IssueType type;
     private int stamp;
     private final Client client;
     private final Project project;
 
-    protected Folder(Client client, Project project, int id, String name, Type type, int stamp) {
+    protected Folder(Client client, Project project, int id, String name, IssueType type, int stamp) {
         super();
         this.client = client;
         this.id = id;
@@ -172,7 +172,7 @@ public class Folder implements Serializable, Entity, NamedEntity {
      * 
      * @return folder issue type
      */
-    public Type getType() {
+    public IssueType getType() {
         return type;
     }
 

@@ -24,7 +24,7 @@ public class Attribute implements Entity, NamedEntity, Serializable, Comparable<
     private int id;
     private String name;
     private String definition;
-    private Type type;
+    private IssueType type;
     private long minValue = Long.MIN_VALUE;
     private long maxValue = Long.MAX_VALUE;
     private long maxLength = Long.MAX_VALUE;
@@ -37,6 +37,9 @@ public class Attribute implements Entity, NamedEntity, Serializable, Comparable<
     private AttributeType attributeType;
     private Client client;
     private boolean builtIn;
+    private boolean forViewFilter = true;
+
+    private boolean fixedPosition;
 
     /**
      * The type of data this attribute will hold.
@@ -140,7 +143,7 @@ public class Attribute implements Entity, NamedEntity, Serializable, Comparable<
     /*
      * Internal constructor.
      */
-    protected Attribute(Type type, int id, String name, String definition, boolean builtIn) {
+    protected Attribute(IssueType type, int id, String name, String definition, boolean builtIn) {
         super();
         this.builtIn = builtIn;
         this.type = type;
@@ -150,7 +153,7 @@ public class Attribute implements Entity, NamedEntity, Serializable, Comparable<
         parseDefinition();
     }
     
-    protected Attribute(Type type, int id, String name, AttributeType attributeType, boolean builtIn) {
+    protected Attribute(IssueType type, int id, String name, AttributeType attributeType, boolean builtIn) {
         super();
         this.builtIn = builtIn;
         this.type = type;
@@ -224,6 +227,25 @@ public class Attribute implements Entity, NamedEntity, Serializable, Comparable<
                 return true;
             }
         }, operation);
+    }
+    
+    /**
+     * Get whether this attribute is supported in view filters
+     * 
+     * @return for view filter
+     */
+    public final boolean isForViewFilter() {
+        return forViewFilter;
+    }
+
+    /**
+     * Get whether this attribute is fixed (i.e. cannot be moved or
+     * removed from a view filter).
+     * 
+     * @return fixed position attribute
+     */
+    public boolean isFixedPosition() {
+        return fixedPosition;
     }
 
     /**
@@ -311,7 +333,7 @@ public class Attribute implements Entity, NamedEntity, Serializable, Comparable<
      * 
      * @return type
      */
-    public Type getType() {
+    public IssueType getType() {
         return type;
     }
 
@@ -354,9 +376,7 @@ public class Attribute implements Entity, NamedEntity, Serializable, Comparable<
 
     @Override
     public String toString() {
-        return "Attribute [dateOnly=" + dateOnly + ", defaultValue=" + defaultValue + ", definition=" + definition + ", id=" + id
-                        + ", maxLength=" + maxLength + ", maxValue=" + maxValue + ", membersOnly=" + membersOnly + ", minValue="
-                        + minValue + ", name=" + name + ", options=" + options + ", required=" + required + ", attributeType=" + attributeType + "]";
+        return "Attribute [id=" + id + ", name=" + name + "]";
     }
 
     @Override
@@ -376,6 +396,10 @@ public class Attribute implements Entity, NamedEntity, Serializable, Comparable<
     protected void setName(String name) {
         this.name = name;
     }
+    
+    protected  void setFixedPosition(boolean fixedPosition) {
+        this.fixedPosition = fixedPosition;
+    }
 
     protected void setDefinition(String definition) {
         this.definition = definition;
@@ -386,5 +410,9 @@ public class Attribute implements Entity, NamedEntity, Serializable, Comparable<
         attributeType = AttributeType.valueOf(args.get(0));
         args.remove(0);
         attributeType.parse(args, this);
+    }
+    
+    protected void setForViewFilter(boolean forViewFilter) {
+        this.forViewFilter = forViewFilter;
     }
 }

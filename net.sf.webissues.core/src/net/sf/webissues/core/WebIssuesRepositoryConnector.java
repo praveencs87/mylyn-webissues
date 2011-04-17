@@ -41,7 +41,7 @@ import net.sf.webissues.api.Folder;
 import net.sf.webissues.api.Issue;
 import net.sf.webissues.api.Project;
 import net.sf.webissues.api.ProtocolException;
-import net.sf.webissues.api.Type;
+import net.sf.webissues.api.IssueType;
 import net.sf.webissues.api.Util;
 
 import org.apache.commons.httpclient.HttpException;
@@ -303,25 +303,25 @@ public class WebIssuesRepositoryConnector extends AbstractRepositoryConnector {
                 try {
                     String issueAttributeValue = null;
                     switch (attr.getId()) {
-                        case Type.PROJECT_ATTR_ID:
+                        case IssueType.PROJECT_ATTR_ID:
                             issueAttributeValue = issue.getFolder().getProject().getName();
                             break;
-                        case Type.FOLDER_ATTR_ID:
+                        case IssueType.FOLDER_ATTR_ID:
                             issueAttributeValue = issue.getFolder().getName();
                             break;
-                        case Type.NAME_ATTR_ID:
+                        case IssueType.NAME_ATTR_ID:
                             issueAttributeValue = issue.getName();
                             break;
-                        case Type.CREATED_DATE_ATTR_ID:
+                        case IssueType.CREATED_DATE_ATTR_ID:
                             issueAttributeValue = String.valueOf((issue.getCreatedDate().getTimeInMillis() / 1000));
                             break;
-                        case Type.MODIFIED_DATE_ATTR_ID:
+                        case IssueType.MODIFIED_DATE_ATTR_ID:
                             issueAttributeValue = String.valueOf((issue.getModifiedDate().getTimeInMillis() / 1000));
                             break;
-                        case Type.CREATED_BY_ATTR_ID:
+                        case IssueType.CREATED_BY_ATTR_ID:
                             issueAttributeValue = issue.getCreatedUser().getLogin();
                             break;
-                        case Type.MODIFIED_BY_ATTR_ID:
+                        case IssueType.MODIFIED_BY_ATTR_ID:
                             issueAttributeValue = issue.getCreatedUser().getLogin();
                             break;
                         default:

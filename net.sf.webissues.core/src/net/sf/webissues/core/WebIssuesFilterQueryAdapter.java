@@ -10,7 +10,7 @@ import java.util.StringTokenizer;
 
 import net.sf.webissues.api.Condition;
 import net.sf.webissues.api.Environment;
-import net.sf.webissues.api.Type;
+import net.sf.webissues.api.IssueType;
 import net.sf.webissues.api.Util;
 import net.sf.webissues.api.View;
 
@@ -21,7 +21,7 @@ public class WebIssuesFilterQueryAdapter {
     private static final long serialVersionUID = 5626098838765595799L;
     private List<Condition> conditions = new ArrayList<Condition>();
     private String name;
-    private Type type;
+    private IssueType type;
     private String searchText;
     private View view;
     private boolean searchComments;
@@ -90,7 +90,7 @@ public class WebIssuesFilterQueryAdapter {
         return searchComments;
     }
 
-    public Type getType() {
+    public IssueType getType() {
         return type;
     }
 
@@ -114,7 +114,7 @@ public class WebIssuesFilterQueryAdapter {
         return buf.toString();
     }
 
-    public void setType(Type type) {
+    public void setType(IssueType type) {
         this.type = type;
     }
 

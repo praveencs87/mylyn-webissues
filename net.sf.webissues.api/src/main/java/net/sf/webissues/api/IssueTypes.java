@@ -9,15 +9,13 @@ import java.util.Map;
 
 import org.apache.commons.httpclient.HttpException;
 import org.apache.commons.httpclient.HttpMethod;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 
-public class Types extends HashMap<Integer, Type> implements Serializable {
+public class IssueTypes extends HashMap<Integer, IssueType> implements Serializable {
 
     private static final long serialVersionUID = 156091835846857151L;
     private final Environment environment;
 
-    protected Types(Environment environment) {
+    protected IssueTypes(Environment environment) {
         super();
         this.environment = environment;
     }
@@ -55,7 +53,7 @@ public class Types extends HashMap<Integer, Type> implements Serializable {
 
     protected void doReload(final Operation operation) throws HttpException, IOException, ProtocolException {
         Client client = environment.getClient();
-        Map<Integer, Type> typeMap = new HashMap<Integer, Type>();
+        Map<Integer, IssueType> typeMap = new HashMap<Integer, IssueType>();
         for (int i = 0; i < 2; i++) {
             HttpMethod method = client.doCommand("LIST TYPES");
             try {
@@ -66,28 +64,28 @@ public class Types extends HashMap<Integer, Type> implements Serializable {
                     if (response.get(0).equals("A")) {
                         int attributeId = Integer.parseInt(response.get(1));
                         int typeId = Integer.parseInt(response.get(2));
-                        Type type = typeMap.get(typeId);
+                        IssueType type = typeMap.get(typeId);
                         if (type == null) {
                             throw new Error("Expected type before attribute");
                         }
                         type.put(attributeId, new Attribute(type, attributeId, response.get(3), response.get(4), false));
                     } else if (response.get(0).equals("T")) {
                         int typeId = Integer.parseInt(response.get(1));
-                        Type type = new Type(this, typeId, response.get(2));
+                        IssueType type = new IssueType(this, typeId, response.get(2));
                         typeMap.put(typeId, type);
                     } else if (response.get(0).equals("V")) {
                         int viewId = Integer.parseInt(response.get(1));
                         int typeId = Integer.parseInt(response.get(2));
                         String viewName = response.get(3);
                         String definition = response.get(4);
-                        boolean userView = response.get(5).equals("1");
-                        Type type = typeMap.get(typeId);
-                        View view = new View(type.getViews(), viewId, viewName);
+                        boolean publicView = response.get(5).equals("1");
+                        IssueType type = typeMap.get(typeId);
+                        View view = new View(type, viewId, viewName);
                         ViewDefinition def;
                         try {
-                            def = new ViewDefinition(definition, type);
+                            def = new ViewDefinition(view, definition, type);
                             view.setDefinition(def);
-                            view.setUserView(userView);
+                            view.setPublicView(publicView);
                             type.getViews().add(view);
                         } catch (ParseException e) {
                             Client.LOG.error("Could not parse view definition '" + definition + "'.", e);
@@ -97,7 +95,7 @@ public class Types extends HashMap<Integer, Type> implements Serializable {
                     }
                 }
                 clear();
-                for (Type type : typeMap.values()) {
+                for (IssueType type : typeMap.values()) {
                     put(type.getId(), type);
                 }
             } finally {
@@ -108,14 +106,14 @@ public class Types extends HashMap<Integer, Type> implements Serializable {
     }
 
     /**
-     * Convenience to get an {@link Attribute} given its ID. All {@link Type}s
+     * Convenience to get an {@link Attribute} given its ID. All {@link IssueType}s
      * contained in this list will be searched.
      * 
      * @param attributeId attribute ID
      * @return attribute or <code>null</code> if no such attribute exists
      */
     public Attribute getAttribute(int attributeId) {
-        for (Type type : this.values()) {
+        for (IssueType type : this.values()) {
             if (type.containsKey(attributeId)) {
                 return type.get(attributeId);
             }
@@ -129,14 +127,14 @@ public class Types extends HashMap<Integer, Type> implements Serializable {
     }
 
     /**
-     * Get a {@link Type} given its name, or <code>null</code> if no such type
+     * Get a {@link IssueType} given its name, or <code>null</code> if no such type
      * exists.
      * 
      * @param name type name
      * @return type
      */
-    public Type getByName(String name) {
-        for (Type type : values()) {
+    public IssueType getByName(String name) {
+        for (IssueType type : values()) {
             if (type.getName().equals(name)) {
                 return type;
             }

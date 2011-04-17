@@ -1,7 +1,7 @@
 /**
  * 
  */
-package net.sf.webissues.ui.wizard;
+package net.sf.webissues.ui;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -15,10 +15,9 @@ import net.sf.webissues.api.ConditionType;
 import net.sf.webissues.api.Environment;
 import net.sf.webissues.api.Folder;
 import net.sf.webissues.api.Project;
+import net.sf.webissues.api.IssueType;
 import net.sf.webissues.api.User;
 import net.sf.webissues.api.Util;
-import net.sf.webissues.ui.WebIssuesImages;
-import net.sf.webissues.ui.WebIssuesUserSelector;
 
 import org.eclipse.mylyn.internal.provisional.commons.ui.CommonImages;
 import org.eclipse.mylyn.internal.provisional.commons.ui.DatePicker;
@@ -38,19 +37,19 @@ import org.eclipse.swt.widgets.Spinner;
 import org.eclipse.swt.widgets.Text;
 
 @SuppressWarnings("restriction")
-class AttributeRow {
+public class ConditionRow {
 
     private Composite value;
-    private final net.sf.webissues.api.Type type;
+    private final net.sf.webissues.api.IssueType type;
     private Combo attributeCombo;
     private Combo conditionCombo;
     private GridData comboGridData;
     private GridData valueGridData;
     private GridData buttonGridData;
     private Condition condition;
-    private List<AttributeRow> rows;
+    private List<ConditionRow> rows;
 
-    AttributeRow(net.sf.webissues.api.Type type, Composite parent, Condition condition, List<AttributeRow> rows, boolean forView) {
+    public ConditionRow(net.sf.webissues.api.IssueType type, Composite parent, Condition condition, List<ConditionRow> rows, boolean forView) {
         this.rows = rows;
         this.type = type;
 
@@ -60,12 +59,12 @@ class AttributeRow {
         attributeCombo = new Combo(parent, SWT.NONE);
         if (!forView) {
             for (Attribute attribute : type.values()) {
-                String attrName = attribute.getName();
-                attributeCombo.add(attrName);
-                if (attribute.equals(condition.getAttribute())) {
-                    attributeCombo.select(attributeCombo.getItemCount() - 1);
-                }
+                addAttr(condition, attribute);
             }
+        }
+        else {
+            addAttr(condition, type.get(IssueType.PROJECT_ATTR_ID));
+            addAttr(condition, type.get(IssueType.FOLDER_ATTR_ID));
         }
         comboGridData = new GridData(SWT.NONE, SWT.NONE, false, false);
         comboGridData.widthHint = 120;
@@ -76,8 +75,8 @@ class AttributeRow {
 
             @Override
             public void widgetSelected(SelectionEvent e) {
-                AttributeRow.this.condition.setAttribute(null);
-                AttributeRow.this.condition.setValue(null);
+                ConditionRow.this.condition.setAttribute(null);
+                ConditionRow.this.condition.setValue(null);
                 buildConditions();
                 rebuildValue();
             }
@@ -99,7 +98,7 @@ class AttributeRow {
 
             @Override
             public void widgetSelected(SelectionEvent e) {
-                AttributeRow.this.condition.setType(getSelectedConditionType());
+                ConditionRow.this.condition.setType(getSelectedConditionType());
                 rebuildValue();
             }
 
@@ -153,6 +152,13 @@ class AttributeRow {
         }
     }
 
+    private void addAttr(Condition condition, Attribute attribute) {
+        attributeCombo.add(attribute.getName());
+        if (attribute.equals(condition.getAttribute())) {
+            attributeCombo.select(attributeCombo.getItemCount() - 1);
+        }
+    }
+
     private Attribute getSelectedAttribute() {
         int selectionIndex = attributeCombo.getSelectionIndex();
         return selectionIndex == -1 ? null : type.getByName(attributeCombo.getItem(selectionIndex));
@@ -193,9 +199,9 @@ class AttributeRow {
             ConditionType conditionType = getSelectedConditionType();
             condition.setAttribute(attr);
             boolean multiple = conditionType.equals(ConditionType.IN);
-            if (attr.getId() == net.sf.webissues.api.Type.PROJECT_ATTR_ID) {
+            if (attr.getId() == net.sf.webissues.api.IssueType.PROJECT_ATTR_ID) {
                 addProjects(gd, multiple);
-            } else if (attr.getId() == net.sf.webissues.api.Type.FOLDER_ATTR_ID) {
+            } else if (attr.getId() == net.sf.webissues.api.IssueType.FOLDER_ATTR_ID) {
                 addFolders(gd, multiple);
             } else {
                 switch (attr.getAttributeType()) {

@@ -16,7 +16,7 @@ public class Condition implements Serializable {
         this.value = value;
     }
     
-    public Condition(String string, Type issueType) {
+    public Condition(String string, IssueType issueType) {
         List<String> args = Util.parseLine(string, ',','"');
         type = ConditionType.valueOf(args.get(0));
         attribute = issueType.get(Integer.parseInt(args.get(1)));

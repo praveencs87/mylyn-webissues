@@ -11,6 +11,9 @@
 
 package net.sf.webissues.ui.editor;
 
+import java.util.Collections;
+import java.util.List;
+
 import net.sf.webissues.core.WebIssuesAttribute;
 
 import org.eclipse.jface.layout.GridDataFactory;
@@ -57,6 +60,11 @@ public class WebIssuesPeoplePart extends AbstractTaskEditorPart {
 
         for(TaskAttribute attr : getTaskData().getRoot().getAttributes().values()) {
             if(attr.getMetaData().getType().equals(TaskAttribute.TYPE_PERSON)) {
+                String val = attr.getValue();
+                if(val.equals("")) {
+                    List<String> emptyList = Collections.emptyList();
+                    attr.setValues(emptyList); 
+                }
                 addAttribute(peopleComposite, toolkit, attr);
             }
         }

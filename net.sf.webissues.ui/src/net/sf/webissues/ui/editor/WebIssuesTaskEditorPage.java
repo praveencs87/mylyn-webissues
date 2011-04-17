@@ -1,11 +1,12 @@
 package net.sf.webissues.ui.editor;
 
+import java.util.ArrayList;
 import java.util.Set;
 
 import net.sf.webissues.api.Environment;
 import net.sf.webissues.api.Folder;
 import net.sf.webissues.api.Project;
-import net.sf.webissues.api.Type;
+import net.sf.webissues.api.IssueType;
 import net.sf.webissues.core.WebIssuesAttribute;
 import net.sf.webissues.core.WebIssuesClient;
 import net.sf.webissues.core.WebIssuesCorePlugin;
@@ -72,7 +73,7 @@ public class WebIssuesTaskEditorPage extends AbstractTaskEditorPage {
                                         .getClient(getTaskRepository(), new NullProgressMonitor());
                         TaskAttribute attribute = model.getTaskData().getRoot()
                                         .getAttribute(WebIssuesAttribute.FOLDER.getTaskKey());
-                        Type currentType = null;
+                        IssueType currentType = null;
                         Environment environment = client.getEnvironment();
                         if (existingTask) {
                             currentType = environment
@@ -100,12 +101,8 @@ public class WebIssuesTaskEditorPage extends AbstractTaskEditorPage {
         Set<TaskEditorPartDescriptor> descriptors = super.createPartDescriptors();
 
         // Remove the default parts
-        for (TaskEditorPartDescriptor taskEditorPartDescriptor : descriptors) {
-            if (taskEditorPartDescriptor.getId().equals(ID_PART_PEOPLE) || taskEditorPartDescriptor.getId().equals(ID_PART_ACTIONS)) {
-                descriptors.remove(taskEditorPartDescriptor);
-                break;
-            }
-        }
+        removePart(descriptors, ID_PART_PEOPLE);
+        removePart(descriptors, ID_PART_ACTIONS);
 
         // Add the replacement parts
         descriptors.add(new TaskEditorPartDescriptor(ID_PART_PEOPLE) {
@@ -129,5 +126,14 @@ public class WebIssuesTaskEditorPage extends AbstractTaskEditorPage {
             }
         }.setPath(PATH_ATTACHMENTS));
         return descriptors;
+    }
+
+    private void removePart(Set<TaskEditorPartDescriptor> descriptors, String id) {
+        for (TaskEditorPartDescriptor taskEditorPartDescriptor : new ArrayList<TaskEditorPartDescriptor>(descriptors)) {
+            if (taskEditorPartDescriptor.getId().equals(id) ) {
+                descriptors.remove(taskEditorPartDescriptor);
+                break;
+            }
+        }
     }
 }

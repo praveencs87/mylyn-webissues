@@ -110,7 +110,7 @@ public class Projects extends EntityMap<Project> implements Serializable {
                         throw new Error("Expected project before folder");
                     }
                     int folderId = Integer.parseInt(response.get(1));
-                    Type type = client.getEnvironment().getTypes().get(Integer.parseInt(response.get(4)));
+                    IssueType type = client.getEnvironment().getTypes().get(Integer.parseInt(response.get(4)));
                     Folder folder = new Folder(client, project, folderId, response.get(3), type, Integer.parseInt(response.get(5)));
                     project.add(folder);
                     folders.put(folderId, folder);

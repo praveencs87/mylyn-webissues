@@ -11,32 +11,19 @@ public class View extends EntityMap<Alert> implements Serializable {
 
     private int id;
     private String name;
-    private Views views;
+    private IssueType type;
     private ViewDefinition definition;
-    private boolean userView;
+    private boolean publicView;
 
-    protected View(Views views, int id, String name) {
+    protected View(IssueType type, int id, String name) {
         super();
-        this.views = views;
+        this.type = type;
         this.id = id;
         this.name = name;
     }
-
-    /**
-     * Get the parent list of views.
-     * 
-     * @return parent view list
-     */
-    public Views getTypes() {
-        return views;
-    }
-
-    public Views getViews() {
-        return views;
-    }
-
-    public void setViews(Views views) {
-        this.views = views;
+    
+    public IssueType getType() {
+        return type;
     }
 
     public ViewDefinition getDefinition() {
@@ -47,12 +34,12 @@ public class View extends EntityMap<Alert> implements Serializable {
         this.definition = definition;
     }
 
-    public boolean isUserView() {
-        return userView;
+    public boolean isPublicView() {
+        return publicView;
     }
 
-    public void setUserView(boolean userView) {
-        this.userView = userView;
+    public void setPublicView(boolean publicView) {
+        this.publicView = publicView;
     }
 
     public void setId(int id) {
@@ -78,7 +65,7 @@ public class View extends EntityMap<Alert> implements Serializable {
      * @throws ProtocolException
      */
     public void rename(Operation operation, final String newName) throws IOException, ProtocolException {
-        final Client client = getViews().getEnvironment().getClient();
+        final Client client = type.getViews().getEnvironment().getClient();
         client.doCall(new Call<Boolean>() {
             public Boolean call() throws HttpException, IOException, ProtocolException {
                 client.doCommand("RENAME VIEW " + id + " '" + Util.escape(newName) + "'");
@@ -95,11 +82,11 @@ public class View extends EntityMap<Alert> implements Serializable {
      * @throws ProtocolException
      */
     public void delete(Operation operation) throws IOException, ProtocolException {
-        final Client client = getViews().getEnvironment().getClient();
+        final Client client = type.getViews().getEnvironment().getClient();
         client.doCall(new Call<Boolean>() {
             public Boolean call() throws HttpException, IOException, ProtocolException {
                 client.doCommand("DELETE VIEW " + id);
-                getViews().remove(View.this);
+                type.getViews().remove(View.this.getId());
                 return true;
             }
         }, operation);
@@ -107,13 +94,20 @@ public class View extends EntityMap<Alert> implements Serializable {
 
     @Override
     public String toString() {
-        return "View [id=" + id + ", name=" + name + ", definition=" + definition + ", userView=" + userView + ", alerts="
+        return "View [id=" + id + ", name=" + name + ", definition=" + definition + ", publicView=" + publicView + ", alerts="
                         + super.values().toString() + "]";
     }
-    /*
-     * 
-     * $query = 'SELECT view_id, type_id, view_name, view_def, ( CASE WHEN
-     * user_id IS NULL THEN 1 ELSE 0 END ) AS is_public' . ' FROM {views}' . '
-     * WHERE user_id = %d OR user_id IS NULL';
-     */
+
+
+    public void publish(final boolean publicView, Operation operation) throws HttpException, IOException, ProtocolException {
+        final Client client = type.getViews().getEnvironment().getClient();
+        client.doCall(new Call<Boolean>() {
+            public Boolean call() throws HttpException, IOException, ProtocolException {
+                client.doCommand("PUBLISH VIEW " + id + " " + (publicView ? "1" : "0"));
+                View.this.publicView = publicView;
+                return true;
+            }
+        }, operation);
+        
+    }
 }

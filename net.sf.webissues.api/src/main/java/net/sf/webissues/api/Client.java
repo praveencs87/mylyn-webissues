@@ -74,7 +74,7 @@ public class Client implements Serializable {
     public static final String DATETIME_FORMAT = "yyyy-MM-dd HH:mm";
     public static final String DATEONLY_FORMAT = "yyyy-MM-dd";
     
-    public static boolean DEBUG = true;
+    public static boolean DEBUG = false;
 
     /**
      * Protocol version
