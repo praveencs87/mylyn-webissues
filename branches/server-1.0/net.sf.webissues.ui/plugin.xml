@@ -3,12 +3,12 @@
 <plugin>
    <extension
          id="net.sf.webissues.repository"
-         name="WebIssues Repository"
+         name="%plugin.name"
          point="org.eclipse.mylyn.tasks.ui.repositories">
       <connectorCore
             class="net.sf.webissues.core.WebIssuesRepositoryConnector"
             id="webissues"
-            name="WebIssues Connector Core"/>
+            name="%plugin.connector"/>
       <connectorUi
             brandingIcon="icons/eview16/webissues-icon.gif"
             class="net.sf.webissues.ui.WebIssuesConnectorUi"
@@ -30,23 +30,17 @@
    
    <extension point="org.eclipse.ui.popupMenus">
       <viewerContribution
-            id="org.eclipse.mylyn.tasklist.ui.viewerContribution"
-            targetID="org.eclipse.mylyn.tasks.ui.views.tasks">
+            id="net.sf.webissues.ui.contribution"
+            targetID="org.eclipse.mylyn.tasks.ui.views.repositories">
             <action
-               class="net.sf.webissues.ui.actions.DeleteIssueAction"
-               definitionId="org.eclipse.ui.file.delete"
-               enablesFor="*"
-               id="net.sf.webissues.ui.actions.delete"
-               label="%DeleteIssueAction.label"
-               menubarPath="repository"
-               tooltip="%DeleteIssueAction.tooltip">
-            <enablement>
-                  <not>
-                     <objectClass
-                           name="org.eclipse.mylyn.internal.tasks.core.LocalTask">
-                     </objectClass>
-                  </not>
-            </enablement>
+                  class="net.sf.webissues.ui.actions.ManageViewsActions"
+                  definitionId="net.sf.webissues.ui.actions.manageViews"
+                  enablesFor="1"
+                  icon="icons/eview16/all.gif"
+                  id="net.sf.webissues.ui.actions.manageViews"
+                  label="%ManageViewsAction.label"
+                  menubarPath="org.eclipse.mylyn.tasks.ui.views.repositories"
+                  tooltip="%ManageViewsAction.tooltip">
          </action>
          </viewerContribution>
       </extension>

@@ -15,7 +15,7 @@ import org.apache.commons.httpclient.HttpMethod;
 
 /**
  * Contains all (mostly) top level static data that is retrieved upon
- * connection. This includes {@link Users}, {@link Projects} and {@link Types}.
+ * connection. This includes {@link Users}, {@link Projects} and {@link IssueTypes}.
  * Also maintains the online / offline state of the client (see {@link Client}
  * description for details.
  */
@@ -33,7 +33,7 @@ public class Environment implements Serializable {
     private Access access;
     private String uuid;
     private List<String> features = new ArrayList<String>();
-    private Types types;
+    private IssueTypes types;
     private Projects projects;
     private Users users;
     private transient boolean online;
@@ -45,7 +45,7 @@ public class Environment implements Serializable {
     protected Environment(Client client) {
         this.client = client;
 
-        types = new Types(this);
+        types = new IssueTypes(this);
         projects = new Projects(this);
         users = new Users(this);
     }
@@ -85,7 +85,7 @@ public class Environment implements Serializable {
      * 
      * @return issue types
      */
-    public Types getTypes() {
+    public IssueTypes getTypes() {
         return types;
     }
 

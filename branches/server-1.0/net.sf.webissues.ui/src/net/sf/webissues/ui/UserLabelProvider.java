@@ -1,5 +1,6 @@
 package net.sf.webissues.ui;
 
+import net.sf.webissues.api.Access;
 import net.sf.webissues.api.User;
 
 import org.eclipse.jface.viewers.ILabelProvider;
@@ -11,6 +12,8 @@ import org.eclipse.swt.graphics.Image;
 public class UserLabelProvider implements ILabelProvider {
 
     private User me;
+    private String emptyUserText = "Nobody";
+    private Image emptyUserIcon = CommonImages.getImage(WebIssuesImages.REMOVE);
 
     public UserLabelProvider(User me) {
         this.me = me;
@@ -20,21 +23,31 @@ public class UserLabelProvider implements ILabelProvider {
         if (arg0 instanceof User) {
             User owner = (User) arg0;
             if (owner.getId() == -1) {
-                return CommonImages.getImage(WebIssuesImages.ALL);
+                return emptyUserIcon;
             } else if (owner.equals(me)) {
-                return CommonImages.getImage(CommonImages.PERSON_ME);
+                return CommonImages.getImage(WebIssuesImages.YOU);
+            } else if (owner.getAccess().equals(Access.ADMIN)) {
+                return CommonImages.getImage(WebIssuesImages.ADMIN);
             } else {
-                return CommonImages.getImage(CommonImages.PERSON);
+                return CommonImages.getImage(WebIssuesImages.PERSON);
             }
         }
         return null;
+    }
+
+    public void setEmptyUserIcon(Image emptyUserIcon) {
+        this.emptyUserIcon = emptyUserIcon;
+    }
+
+    public void setEmptyUserText(String emptyUserText) {
+        this.emptyUserText = emptyUserText;
     }
 
     public String getText(Object arg0) {
         if (arg0 instanceof User) {
             User owner = (User) arg0;
             if (owner.getId() == -1) {
-                return "";
+                return emptyUserText;
             }
             return owner.getName();
         }

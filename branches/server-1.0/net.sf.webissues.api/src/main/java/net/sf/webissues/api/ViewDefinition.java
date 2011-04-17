@@ -1,5 +1,6 @@
 package net.sf.webissues.api;
 
+import java.io.IOException;
 import java.io.Serializable;
 import java.text.DateFormat;
 import java.text.ParseException;
@@ -8,18 +9,27 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+import org.apache.commons.httpclient.HttpException;
+
 import net.sf.webissues.api.Attribute.AttributeType;
 
 public class ViewDefinition extends ArrayList<Condition> implements Serializable {
 
     private static final long serialVersionUID = 8767016925155729108L;
 
-
     private List<Attribute> columns = new ArrayList<Attribute>();
-    private int sortColumn;
+    private boolean sortAscending;
+    private Attribute sortAttribute;
+    private View view;
+    
+    public ViewDefinition(View view) {
+        this.view = view;
+    }
 
-    public ViewDefinition(String definition, Type type) throws ParseException {
+    public ViewDefinition(View view, String definition, IssueType type) throws ParseException {
+        this.view = view;
         List<String> args = Util.parseLine(definition, ' ', '"');
+        sortAscending = true;
         if (!args.get(0).equals("VIEW")) {
             throw new ParseException("Expected VIEW as first argument.", 0);
         }
@@ -32,9 +42,27 @@ public class ViewDefinition extends ArrayList<Condition> implements Serializable
             } else if (els.get(0).equals("filters")) {
                 parseFilters(type, value);
             } else if (els.get(0).equals("sort-column")) {
-                sortColumn = Integer.parseInt(value);
+                sortAttribute = type.get(viewAttributeIdToAttributeId(Integer.parseInt(value)));
+            } else if (els.get(0).equals("sort-desc")) {
+                sortAscending = value.equals("0");
             }
         }
+    }
+    
+    public View getView() {
+        return view;
+    }
+
+    public void setSortColumn(Attribute sortAttribute) {
+        this.sortAttribute = sortAttribute;
+    }
+
+    public void addColumn(Attribute attribute) {
+        columns.add(attribute);
+    }
+    
+    public void removeColumn(Attribute attribute) {
+        columns.remove(attribute);
     }
 
     public Collection<Attribute> getAttributes() {
@@ -42,19 +70,23 @@ public class ViewDefinition extends ArrayList<Condition> implements Serializable
     }
 
     public Attribute getSortAttribute() {
-        return columns.get(sortColumn);
+        return sortAttribute;
     }
 
-    public int getSortColumn() {
-        return sortColumn;
+    public void setSortAscending(boolean sortAscending) {
+        this.sortAscending = sortAscending;
+    }
+
+    public boolean isSortAscending() {
+        return sortAscending;
     }
 
     @Override
     public String toString() {
-        return "ViewDefinition [columns=" + columns + ", sortColumn=" + sortColumn + ", toString()=" + super.toString() + "]";
+        return "ViewDefinition [columns=" + columns + ", sortAttribute=" + sortAttribute + ", toString()=" + super.toString() + "]";
     }
 
-    private void parseColumns(Type type, String value) {
+    private void parseColumns(IssueType type, String value) {
         for (String col : Util.parseLine(value, ',', '"')) {
             Attribute attr = getAttribute(type, col);
             if (attr != null) {
@@ -66,7 +98,7 @@ public class ViewDefinition extends ArrayList<Condition> implements Serializable
         }
     }
 
-    private void parseFilters(Type type, String filter) throws ParseException {
+    private void parseFilters(IssueType type, String filter) throws ParseException {
         List<String> fels = Util.parseLine(filter.substring(1, filter.length() - 1), ',', '"');
         int x = 1;
         for (String fel : fels) {
@@ -100,19 +132,73 @@ public class ViewDefinition extends ArrayList<Condition> implements Serializable
         }
     }
 
-    private Attribute getAttribute(Type type, String attributeId) {
-        int id = Integer.parseInt(attributeId);
+    private Attribute getAttribute(IssueType type, String attributeId) {
+        return type.get(viewAttributeIdToAttributeId(Integer.parseInt(attributeId)));
+    }
+
+    private int viewAttributeIdToAttributeId(int id) {
         if(id >= 1000) {
             id -= 1000;
         }
         else {
-            id = Type.NAME_ATTR_ID + id;
+            id = IssueType.NAME_ATTR_ID + id;
         }
-        return type.get(id);
+        return id;
     }
 
     private String getDateValue(boolean dateOnly, String issueAttributeValue) throws ParseException {
         DateFormat fmt = new SimpleDateFormat(dateOnly ? Client.DATEONLY_FORMAT : Client.DATETIME_FORMAT);
         return String.valueOf(fmt.parse(issueAttributeValue).getTime() / 1000);
+    }
+
+    public String toDefinitionString() {
+        StringBuilder bui = new StringBuilder();
+        bui.append("VIEW columns=\"");
+        for(int i = 0 ; i < columns.size(); i ++) {
+            if(i > 0) {
+                bui.append(",");
+            }
+            bui.append(getViewAttributeId(columns.get(i).getId()));
+        }
+        bui.append("\" filters={");
+        for(int i = 0 ; i < size(); i ++) {
+            if(i > 0) {
+                bui.append(",");
+            }
+            bui.append("\"");
+            Condition cond = get(i);
+            bui.append(cond.getType().name());
+            bui.append(" column=");
+            bui.append(getViewAttributeId(cond.getAttribute().getId()));
+            bui.append(" value=\\\"");
+            bui.append(cond.getValue());
+            bui.append("\\\"\"");
+        }
+        bui.append("} sort-column=");
+        bui.append(getViewAttributeId(sortAttribute.getId()));
+        bui.append(" sort-desc=");
+        bui.append(sortAscending ? 0 : 1);
+        return bui.toString();
+    }
+
+
+    public void update(Operation operation) throws HttpException, IOException, ProtocolException {
+        final Client client = view.getType().getTypes().getEnvironment().getClient();
+        client.doCall(new Call<Boolean>() {
+            public Boolean call() throws HttpException, IOException, ProtocolException {
+                client.doCommand("MODIFY VIEW " + view.getId() + " '" + Util.escape(toDefinitionString()) + "'" );
+                view.setDefinition(ViewDefinition.this);
+                return true;
+            }
+        }, operation);
+        
+    }
+    
+    private int getViewAttributeId(int attrId) {
+        return attrId >= IssueType.NAME_ATTR_ID ? attrId - IssueType.NAME_ATTR_ID : attrId + 1000; 
+    }
+
+    public void setView(View view) {
+        this.view = view;
     }
 }

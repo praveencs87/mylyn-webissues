@@ -39,9 +39,10 @@ import net.sf.webissues.api.IssueDetails;
 import net.sf.webissues.api.Project;
 import net.sf.webissues.api.Projects;
 import net.sf.webissues.api.ProtocolException;
-import net.sf.webissues.api.Type;
+import net.sf.webissues.api.IssueType;
 import net.sf.webissues.api.User;
 import net.sf.webissues.api.Util;
+import net.sf.webissues.api.Attribute.AttributeType;
 
 import org.apache.commons.httpclient.HttpException;
 import org.eclipse.core.runtime.CoreException;
@@ -190,7 +191,7 @@ public class WebIssuesTaskDataHandler extends AbstractTaskDataHandler {
 
     private static Calendar parseDateAttribute(TaskRepository repository, Issue issue, String attributeName) {
         Folder folder = issue.getFolder();
-        Type type = folder.getType();
+        IssueType type = folder.getType();
         Attribute attr = type.getByName(attributeName);
         if (attr != null && attr.getType().equals(Attribute.AttributeType.DATETIME)) {
             DateFormat fmt = new SimpleDateFormat(attr.isDateOnly() ? Client.DATEONLY_FORMAT : Client.DATETIME_FORMAT);
@@ -217,7 +218,7 @@ public class WebIssuesTaskDataHandler extends AbstractTaskDataHandler {
         Environment environment = WebIssuesCorePlugin.getDefault().getConnector().getClientManager().getClient(repository, monitor)
                         .getEnvironment();
         Folder folder = issue.getIssue().getFolder();
-        Type type = folder.getType();
+        IssueType type = folder.getType();
 
         // Set the project and folder attributes
         TaskAttribute projectAttribute = data.getRoot().getAttribute(WebIssuesAttribute.PROJECT.getTaskKey());
@@ -242,8 +243,16 @@ public class WebIssuesTaskDataHandler extends AbstractTaskDataHandler {
             if (!attr.isBuiltIn() && ( priorityAttribute == null || !attr.getName().equals("Priority"))) {
                 String defaultValue = attr.getDefaultValue();
                 String attributeId = WEBISSUES_ATTRIBUTE_KEY_PREFIX + attr.getId();
+                
+                // Set as default if nothing set
+                String value = issue.getIssue().get(attr);
+                if (Util.isNullOrBlank(value)) {
+                    value = defaultValue;
+                }
+                
+                // Set up the task attribute
                 TaskAttribute taskAttr = data.getRoot().createAttribute(attributeId);
-                TaskAttributeMetaData metaData = taskAttr.getMetaData();
+                TaskAttributeMetaData metaData = taskAttr.getMetaData();                
                 metaData.setKind(TaskAttribute.KIND_DEFAULT);
                 switch (attr.getAttributeType()) {
                     case DATETIME:
@@ -263,6 +272,9 @@ public class WebIssuesTaskDataHandler extends AbstractTaskDataHandler {
                         metaData.setType(TaskAttribute.TYPE_PERSON);
                         metaData.setKind(TaskAttribute.KIND_PEOPLE);
                         metaData.putValue("membersOnly", String.valueOf(attr.isMembersOnly()));
+                        if("[Me]".equals(value)) {
+                            value = type.getTypes().getEnvironment().getOwnerUser().getName();
+                        }
                         break;
                     case ENUM:
                         metaData.setType(TaskAttribute.TYPE_SINGLE_SELECT);
@@ -274,12 +286,6 @@ public class WebIssuesTaskDataHandler extends AbstractTaskDataHandler {
                             taskAttr.putOption(option, option);
                         }
                         break;
-                }
-
-                // Set as default if nothing set
-                String value = issue.getIssue().get(attr);
-                if (Util.isNullOrBlank(value)) {
-                    value = defaultValue;
                 }
 
                 // Format the value if it is numeric
@@ -453,7 +459,7 @@ public class WebIssuesTaskDataHandler extends AbstractTaskDataHandler {
     }
 
     public static void rebuildFolders(Environment environment, TaskAttribute projectAttribute, TaskData data, TaskAttribute attr,
-                                      Type currentType) {
+                                      IssueType currentType) {
         String value = projectAttribute.getValue();
         attr.clearOptions();
         if (!Util.isNullOrBlank(value)) {

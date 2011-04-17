@@ -2,6 +2,8 @@ package net.sf.webissues.api;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 
@@ -10,12 +12,12 @@ import net.sf.webissues.api.Attribute.AttributeType;
 import org.apache.commons.httpclient.HttpException;
 import org.apache.commons.httpclient.HttpMethod;
 
-public class Type extends HashMap<Integer, Attribute> implements Serializable {
+public class IssueType extends HashMap<Integer, Attribute> implements Serializable {
     private static final long serialVersionUID = -2967172058163844285L;
 
     private int id;
     private String name;
-    private final Types types;
+    private final IssueTypes types;
     private Views views;
 
     public final static int PROJECT_ATTR_ID = 2147482645;
@@ -27,16 +29,24 @@ public class Type extends HashMap<Integer, Attribute> implements Serializable {
     public final static int MODIFIED_DATE_ATTR_ID = 2147482651;
     public final static int MODIFIED_BY_ATTR_ID = 2147482652;
 
-    protected Type(Types types, int id, String name) {
+    protected IssueType(IssueTypes types, int id, String name) {
         super();
         this.types = types;
         this.id = id;
         this.name = name;
         views = new Views(types.getEnvironment(), this);
-        addAttribute(new Attribute(this, PROJECT_ATTR_ID, "Project", AttributeType.ENUM, true));
-        addAttribute(new Attribute(this, FOLDER_ATTR_ID, "Folder", AttributeType.ENUM, true));
-        addAttribute(new Attribute(this, NAME_ATTR_ID, "Name", AttributeType.TEXT, true));
-        addAttribute(new Attribute(this, ID_ATTR_ID, "ID", AttributeType.NUMERIC, true));
+        Attribute attr4 = new Attribute(this, ID_ATTR_ID, "ID", AttributeType.NUMERIC, true);
+        attr4.setFixedPosition(true);
+        addAttribute(attr4);
+        Attribute attr3 = new Attribute(this, NAME_ATTR_ID, "Name", AttributeType.TEXT, true);
+        attr3.setFixedPosition(true);
+        addAttribute(attr3);
+        Attribute attr = new Attribute(this, PROJECT_ATTR_ID, "Project", AttributeType.ENUM, true);
+        attr.setForViewFilter(false);
+        addAttribute(attr);
+        Attribute attr2 = new Attribute(this, FOLDER_ATTR_ID, "Folder", AttributeType.ENUM, true);
+        attr2.setForViewFilter(false);
+        addAttribute(attr2);
         Attribute createdAttr = new Attribute(this, CREATED_DATE_ATTR_ID, "Created Date", AttributeType.DATETIME, true);
         createdAttr.setDateOnly(true);
         addAttribute(createdAttr);
@@ -67,7 +77,7 @@ public class Type extends HashMap<Integer, Attribute> implements Serializable {
             return false;
         if (getClass() != obj.getClass())
             return false;
-        Type other = (Type) obj;
+        IssueType other = (IssueType) obj;
         if (id != other.id)
             return false;
         return true;
@@ -108,7 +118,7 @@ public class Type extends HashMap<Integer, Attribute> implements Serializable {
         client.doCall(new Call<Boolean>() {
             public Boolean call() throws HttpException, IOException, ProtocolException {
                 client.doCommand("RENAME TYPE " + id + " '" + Util.escape(newName) + "'");
-                Type.this.name = newName;
+                IssueType.this.name = newName;
                 return true;
             }
         }, operation);
@@ -125,7 +135,7 @@ public class Type extends HashMap<Integer, Attribute> implements Serializable {
         client.doCall(new Call<Boolean>() {
             public Boolean call() throws HttpException, IOException, ProtocolException {
                 client.doCommand("DELETE TYPE " + id);
-                getTypes().remove(Type.this.getId());
+                getTypes().remove(IssueType.this.getId());
                 return true;
             }
         }, operation);
@@ -145,7 +155,7 @@ public class Type extends HashMap<Integer, Attribute> implements Serializable {
      * 
      * @return parent type list
      */
-    public Types getTypes() {
+    public IssueTypes getTypes() {
         return types;
     }
 
@@ -170,5 +180,15 @@ public class Type extends HashMap<Integer, Attribute> implements Serializable {
             }
         }
         return null;
+    }
+
+    public Collection<Attribute> getViewFilterAttributes() {
+        List<Attribute> a  =new ArrayList<Attribute>();
+        for(Attribute attr : values()) {
+            if(attr.isForViewFilter()) {
+                a.add(attr);
+            }
+        }
+        return a;
     }
 }
