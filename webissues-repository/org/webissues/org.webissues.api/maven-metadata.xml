@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata>
+  <groupId>org.webissues</groupId>
+  <artifactId>org.webissues.api</artifactId>
+  <version>1.0-alpha4</version>
+  <versioning>
+    <versions>
+      <version>1.0-alpha4</version>
+    </versions>
+    <lastUpdated>20110422122430</lastUpdated>
+  </versioning>
+</metadata>
