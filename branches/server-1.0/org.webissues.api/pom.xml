@@ -14,10 +14,10 @@ This library allows access to all WebIssues features provided by its HTTP based 
 	<packaging>bundle</packaging>
 	<licenses>
 		<license>
-			<name>Eclipse Public License</name>
-			<comments>Eclipse Public License</comments>
-			<url>http://www.eclipse.org/legal/epl-v10.html</url>
-		</license>
+		<name>Apache License, Version 2.0</name>
+		<url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+		<distribution>repo</distribution>
+	</license>
 	</licenses>
 	<build>
 		<sourceDirectory>src/main/java</sourceDirectory>
@@ -132,9 +132,9 @@ This library allows access to all WebIssues features provided by its HTTP based 
 			<scope>test</scope>
 		</dependency>
 		<dependency>
-			<groupId>org.apache.httpcomponents</groupId>
-			<artifactId>httpclient</artifactId>
-			<version>4.0.1</version>
+			<groupId>commons-httpclient</groupId>
+			<artifactId>commons-httpclient</artifactId>
+			<version>3.1</version>
 			<type>jar</type>
 			<scope>compile</scope>
 		</dependency>
