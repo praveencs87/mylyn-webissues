@@ -12,12 +12,12 @@ import org.webissues.api.Operation;
 @Ignore
 public class LoadClientIntegrationTest extends AbstractClientTest {
 
-    LoadClientIntegrationTest() {
-        super(null, null);
+    protected LoadClientIntegrationTest(String username, char[] password) {
+        super(username, password);
     }
 
     public static void main(final String[] args) throws Exception {
-        LoadClientIntegrationTest lct = new LoadClientIntegrationTest();
+        LoadClientIntegrationTest lct = new LoadClientIntegrationTest(args[0], args[1].toCharArray());
         Client c = null;
         Operation op = lct.createOperation();
         Authenticator authenticator2 = lct.createAuthenticator();
