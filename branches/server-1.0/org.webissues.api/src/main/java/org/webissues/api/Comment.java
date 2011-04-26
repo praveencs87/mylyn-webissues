@@ -1,6 +1,7 @@
 package org.webissues.api;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
@@ -10,9 +11,21 @@ import org.apache.commons.httpclient.HttpException;
 /**
  * Represents a single comment in an {@link IssueDetails} object.
  */
-public class Comment extends AbstractChange {
+public class Comment extends AbstractChange implements Serializable {
 
+    private static final long serialVersionUID = 1L;
     private String text;
+
+    /**
+     * Constructor for comment that is not yet attached to an issue.
+     * 
+     * @param issue issue this comment is attached to
+     * @param text text of comment
+     * @param user user that created comment
+     */
+    public Comment(String text, User user) {
+        this(null, text, user);
+    }
 
     /**
      * Constructor.

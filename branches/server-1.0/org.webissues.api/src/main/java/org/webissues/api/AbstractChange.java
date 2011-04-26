@@ -1,5 +1,6 @@
 package org.webissues.api;
 
+import java.io.Serializable;
 import java.util.Calendar;
 
 /**
@@ -9,7 +10,9 @@ import java.util.Calendar;
  * 1.0-alpha, more operation are considered "Changes", including comments,
  * attachments, title changes and others.
  */
-public abstract class AbstractChange implements Entity {
+public abstract class AbstractChange implements Entity, Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     public enum Type {
         ISSUE_CREATED("Issue Created"), ISSUE_RENAMED("Issue Renamed"), VALUE_CHANGED("Value changed"), COMMENT_ADDED("Comment"), FILE_ADDED(
@@ -191,6 +194,15 @@ public abstract class AbstractChange implements Entity {
     public String toString() {
         return "AbstractChange [id=" + id + ", modifiedDate=" + modifiedDate + ", modifiedUser=" + modifiedUser + ", attribute="
                         + attribute + ", oldValue=" + oldValue + ", newValue=" + newValue + ", type=" + type + "]";
+    }
+
+    /**
+     * Set the issue this comment is attached too.
+     * 
+     * @param issueDetails issue details
+     */
+    public void setIssueDetails(IssueDetails issueDetails) {
+        this.issueDetails = issueDetails;
     }
 
     protected void setId(int id) {
