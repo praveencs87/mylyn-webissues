@@ -12,7 +12,7 @@ import org.apache.commons.httpclient.HttpException;
 import org.apache.commons.httpclient.HttpMethod;
 import org.webissues.api.Attribute.AttributeType;
 
-public class IssueType extends HashMap<Integer, Attribute> implements Serializable {
+public class IssueType extends HashMap<Integer, Attribute> implements Serializable, Entity {
     private static final long serialVersionUID = -2967172058163844285L;
 
     private int id;

@@ -1,5 +1,6 @@
 package org.webissues.api;
 
+import java.io.Serializable;
 import java.util.Collection;
 import java.util.Map;
 import java.util.TreeMap;
@@ -9,8 +10,9 @@ import java.util.TreeMap;
  * 
  * @param <T> entity
  */
-public abstract class EntityMap<T extends Entity>  {
+public abstract class EntityMap<T extends Entity> implements Serializable {
 
+    private static final long serialVersionUID = 1L;
     private Map<Integer, T> entities = new TreeMap<Integer, T>();
 
     /**

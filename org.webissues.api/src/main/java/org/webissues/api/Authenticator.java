@@ -21,7 +21,7 @@ public interface Authenticator extends Serializable {
     /**
      * Provides the user name and password.
      */
-    public interface Credentials {
+    public interface Credentials  {
         /**
          * Get the user name
          * 

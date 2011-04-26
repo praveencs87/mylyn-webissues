@@ -3,13 +3,18 @@ package org.webissues.api;
 import java.util.Calendar;
 
 /**
- * Abstract representation of a single change made to an issue.
+ * Abstract representation of a single change made to an issue. Prior to
+ * 1.0-alpha, the only changes recorded were attribute changes (and so other
+ * classes that extend this one are not included in the issues history). Since
+ * 1.0-alpha, more operation are considered "Changes", including comments,
+ * attachments, title changes and others.
  */
 public abstract class AbstractChange implements Entity {
 
     public enum Type {
-        ISSUE_CREATED("Issue Created"), ISSUE_RENAMED("Issue Renamed"), VALUE_CHANGED("Value changed"), COMMENT_ADDED("Comment"), FILE_ADDED("File attached"), ISSUE_MOVED("Issue moved");
-        
+        ISSUE_CREATED("Issue Created"), ISSUE_RENAMED("Issue Renamed"), VALUE_CHANGED("Value changed"), COMMENT_ADDED("Comment"), FILE_ADDED(
+                        "File attached"), ISSUE_MOVED("Issue moved");
+
         private String label;
 
         private Type(String label) {
@@ -52,7 +57,7 @@ public abstract class AbstractChange implements Entity {
             }
             throw new IllegalArgumentException();
         }
-        
+
         public String getLabel() {
             return label;
         }
@@ -73,8 +78,8 @@ public abstract class AbstractChange implements Entity {
     /*
      * Internal constructor.
      */
-    protected AbstractChange(IssueDetails issueDetails, Type type, int id, Calendar createdDate, User createdUser, Calendar modifiedDate, User modifiedUser,
-                             Attribute attribute, String oldValue, String newValue) {
+    protected AbstractChange(IssueDetails issueDetails, Type type, int id, Calendar createdDate, User createdUser,
+                             Calendar modifiedDate, User modifiedUser, Attribute attribute, String oldValue, String newValue) {
         super();
         this.issueDetails = issueDetails;
         this.type = type;
@@ -91,7 +96,7 @@ public abstract class AbstractChange implements Entity {
     public int getId() {
         return id;
     }
-    
+
     /**
      * Get the issue this change is attached to.
      * 

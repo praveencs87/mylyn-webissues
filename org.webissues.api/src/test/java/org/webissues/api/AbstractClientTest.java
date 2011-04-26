@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URL;
 
-
 import org.apache.commons.httpclient.HttpException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -22,7 +21,7 @@ import org.webissues.api.User;
 
 @Ignore
 public class AbstractClientTest {
-    
+
     final static Log LOG = LogFactory.getLog(AbstractClientTest.class);
 
     private String username;
@@ -61,18 +60,17 @@ public class AbstractClientTest {
             }
         };
     }
-    
+
     protected PasswordChangeCallback createPasswordChangeCallback() {
         return new PasswordChangeCallback() {
-            
+
             public char[] getNewPassword() {
                 LOG.info("You must change you password, please enter the new one now (just press RETURN to cancel): ");
                 BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
                 try {
                     String newPassword = br.readLine();
                     return newPassword == null || newPassword.length() == 0 ? null : newPassword.toCharArray();
-                }
-                catch(IOException ioe) {
+                } catch (IOException ioe) {
                     ioe.printStackTrace();
                     return null;
                 }
@@ -105,15 +103,19 @@ public class AbstractClientTest {
     protected static void dumpClient(Client c, Operation op) throws HttpException, IOException, ProtocolException {
         LOG.info(c.getEnvironment());
         for (User user : c.getEnvironment().getUsers().values()) {
-            user.reload(op);
-            LOG.info("U: " + user);
+            if (c.getEnvironment().isOnline() && c.getEnvironment().getOwnerUser().getAccess().equals(Access.ADMIN)) {
+                user.reload(op);
+                LOG.info("U: " + user);
+            }
         }
         for (Project project : c.getEnvironment().getProjects().values()) {
             LOG.info("P: " + project);
             for (Folder folder : project.values()) {
                 LOG.info("    F: " + folder);
-                for (Issue issue : folder.getIssues(op, 0)) {
-                    LOG.info("        I: " + issue.toString());
+                if (c.getEnvironment().isOnline()) {
+                    for (Issue issue : folder.getIssues(op, 0)) {
+                        LOG.info("        I: " + issue.toString());
+                    }
                 }
             }
         }
