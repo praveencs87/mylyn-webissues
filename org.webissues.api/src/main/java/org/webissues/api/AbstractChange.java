@@ -76,15 +76,15 @@ public abstract class AbstractChange implements Entity, Serializable {
     private String oldValue;
     private String newValue;
     private Type type;
-    private IssueDetails issueDetails;
+    private Issue issue;
 
     /*
      * Internal constructor.
      */
-    protected AbstractChange(IssueDetails issueDetails, Type type, int id, Calendar createdDate, User createdUser,
+    protected AbstractChange(Issue issue, Type type, int id, Calendar createdDate, User createdUser,
                              Calendar modifiedDate, User modifiedUser, Attribute attribute, String oldValue, String newValue) {
         super();
-        this.issueDetails = issueDetails;
+        this.issue = issue;
         this.type = type;
         this.id = id;
         this.modifiedDate = modifiedDate;
@@ -105,8 +105,8 @@ public abstract class AbstractChange implements Entity, Serializable {
      * 
      * @return issue
      */
-    public IssueDetails getIssueDetails() {
-        return issueDetails;
+    public Issue getIssue() {
+        return issue;
     }
 
     /**
@@ -201,8 +201,8 @@ public abstract class AbstractChange implements Entity, Serializable {
      * 
      * @param issueDetails issue details
      */
-    public void setIssueDetails(IssueDetails issueDetails) {
-        this.issueDetails = issueDetails;
+    public void setIssue(Issue issue) {
+        this.issue = issue;
     }
 
     protected void setId(int id) {

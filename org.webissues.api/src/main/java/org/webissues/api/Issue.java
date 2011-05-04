@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 
 import org.apache.commons.httpclient.HttpException;
+import org.apache.commons.httpclient.HttpMethod;
 
 /**
  * Represents the main body of an issue. This is made up of a small number of
@@ -71,6 +72,47 @@ public class Issue extends HashMap<Attribute, String> implements Entity, NamedEn
         User modifiedBy = environment.getUsers().get(Integer.parseInt(response.get(8)));
         return new Issue(issueId, stamp, issueName, created, createdBy, modified, modifiedBy, environment.getProjects().getFolder(
             folderId));
+    }
+
+    /**
+     * Store the content of an attachment.
+     * 
+     * @param attachment attachment
+     * @param inputStream attachment data
+     * @param operation operation call-back
+     * @throws HttpException on HTTP error
+     * @throws IOException on any other IO error
+     * @throws ProtocolException on error return by server or protocol problem
+     */
+    public void attachmentData(final Attachment attachment, final InputStream inputStream, final long length,
+                                  final String contentType, Operation operation) throws HttpException, IOException,
+                    ProtocolException {
+        attachment.setId(getFolder().getProject().getProjects().getEnvironment().getClient().putAttachmentData(getId(), attachment.getName(), attachment.getDescription(), inputStream, length, contentType, operation));
+    }
+
+    /**
+     * Add a new comment to the issue.
+     * 
+     * @param comment comment text
+     * @param operation
+     * @throws IOException
+     * @throws ProtocolException
+     */
+    public void addComment(final Comment comment, Operation operation) throws IOException, ProtocolException {
+        final Client client = folder.getType().getTypes().getEnvironment().getClient();
+        client.doCall(new Call<Object>() {
+            public Object call() throws HttpException, IOException, ProtocolException {
+                HttpMethod method = client.doCommand("ADD COMMENT " + getId() + " '" + Util.escape(comment.getText()) + "'");
+                try {
+                    List<String> response = client.readResponse(method.getResponseBodyAsStream()).iterator().next();
+                    comment.setId(Integer.parseInt(response.get(1)));
+                    comment.setIssue(Issue.this);
+                } finally {
+                    method.releaseConnection();
+                }
+                return null;
+            }
+        }, operation);
     }
 
     /**
@@ -241,5 +283,9 @@ public class Issue extends HashMap<Attribute, String> implements Entity, NamedEn
 
     protected void setRead(boolean read) {
         this.read = read;
+    }
+
+    protected void setId(int id) {
+        this.id = id;        
     }
 }

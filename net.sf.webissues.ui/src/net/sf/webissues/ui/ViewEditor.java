@@ -3,15 +3,6 @@ package net.sf.webissues.ui;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 
-import net.sf.webissues.api.Attribute;
-import net.sf.webissues.api.Condition;
-import net.sf.webissues.api.ConditionType;
-import net.sf.webissues.api.Environment;
-import net.sf.webissues.api.IssueType;
-import net.sf.webissues.api.IssueTypes;
-import net.sf.webissues.api.ProtocolException;
-import net.sf.webissues.api.View;
-import net.sf.webissues.api.ViewDefinition;
 import net.sf.webissues.core.WebIssuesClient;
 import net.sf.webissues.core.WebIssuesClientManager;
 import net.sf.webissues.core.WebIssuesCorePlugin;
@@ -42,6 +33,15 @@ import org.eclipse.swt.widgets.TabItem;
 import org.eclipse.swt.widgets.Text;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.progress.IProgressService;
+import org.webissues.api.Attribute;
+import org.webissues.api.Condition;
+import org.webissues.api.ConditionType;
+import org.webissues.api.IEnvironment;
+import org.webissues.api.IssueType;
+import org.webissues.api.IssueTypes;
+import org.webissues.api.ProtocolException;
+import org.webissues.api.View;
+import org.webissues.api.ViewDefinition;
 
 public class ViewEditor {
     private Combo type;
@@ -108,7 +108,7 @@ public class ViewEditor {
         validateName(name);
     }
 
-    public void setEnvironment(Environment environment) {
+    public void setEnvironment(IEnvironment environment) {
         types = environment.getTypes();
         rebuildTypeList();
     }
@@ -402,7 +402,7 @@ public class ViewEditor {
     private void rebuildTypeList() {
         type.removeAll();
         if (types != null) {
-            for (net.sf.webissues.api.IssueType issueType : types.values()) {
+            for (org.webissues.api.IssueType issueType : types.values()) {
                 type.add(issueType.getName());
                 if (type.getItemCount() == 1) {
                     type.select(0);

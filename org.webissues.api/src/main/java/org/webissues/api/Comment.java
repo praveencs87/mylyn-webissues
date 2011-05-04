@@ -34,7 +34,7 @@ public class Comment extends AbstractChange implements Serializable {
      * @param text text of comment
      * @param user user that created comment
      */
-    public Comment(IssueDetails issue, String text, User user) {
+    public Comment(Issue issue, String text, User user) {
         super(issue, Type.COMMENT_ADDED, 0, Calendar.getInstance(), user, Calendar.getInstance(), user, null, null, null);
         this.text = text;
     }
@@ -51,12 +51,12 @@ public class Comment extends AbstractChange implements Serializable {
     /*
      * Internal constructor.
      */
-    Comment(IssueDetails issue, Change change, String text) {
+    Comment(Issue issue, Change change, String text) {
         this(issue, change.getId(), text, change.getCreatedDate(), change.getCreatedUser(), change.getModifiedDate(), change
                         .getModifiedUser());
     }
 
-    Comment(IssueDetails issue, int id, String text, Calendar createdDate, User createdUser, Calendar modifiedDate, User modfiedUser) {
+    Comment(Issue issue, int id, String text, Calendar createdDate, User createdUser, Calendar modifiedDate, User modfiedUser) {
         super(issue, Type.COMMENT_ADDED, id, createdDate, createdUser, modifiedDate, modfiedUser, null, null, null);
         this.text = text;
     }
@@ -96,17 +96,17 @@ public class Comment extends AbstractChange implements Serializable {
     }
 
     private Client getClient() {
-        final Client client = getIssueDetails().getIssue().getFolder().getProject().getProjects().getEnvironment().getClient();
+        final Client client = getIssue().getFolder().getProject().getProjects().getEnvironment().getClient();
         return client;
     }
 
-    static Comment createFromResponse(IssueDetails issueDetails, List<String> response, IEnvironment environment) {
+    static Comment createFromResponse(Issue issue, List<String> response, IEnvironment environment) {
         Calendar date = Util.parseTimestampInSeconds(response.get(3));
         User user = environment.getUsers().get(Integer.parseInt(response.get(4)));
-        return new Comment(issueDetails, Integer.parseInt(response.get(1)), response.get(5), date, user, date, user);
+        return new Comment(issue, Integer.parseInt(response.get(1)), response.get(5), date, user, date, user);
     }
 
-    static Comment createFromResponse(IssueDetails issueDetails, List<String> response, IEnvironment environment,
+    static Comment createFromResponse(Issue issue, List<String> response, IEnvironment environment,
                                       Map<Integer, Change> changeMap) {
         if (response.size() != 3 || !response.get(0).equals("C")) {
             throw new IllegalArgumentException("Incorrect response. Expected 'C commentId 'comment'");
@@ -116,6 +116,6 @@ public class Comment extends AbstractChange implements Serializable {
         if(change == null) {
             throw new Error("No change for ID " + id);
         }
-        return new Comment(issueDetails, change, response.get(2));
+        return new Comment(issue, change, response.get(2));
     }
 }

@@ -3,13 +3,6 @@ package net.sf.webissues.ui;
 import java.util.ArrayList;
 import java.util.List;
 
-import net.sf.webissues.api.Access;
-import net.sf.webissues.api.Environment;
-import net.sf.webissues.api.IssueType;
-import net.sf.webissues.api.User;
-import net.sf.webissues.api.View;
-import net.sf.webissues.api.ViewDefinition;
-import net.sf.webissues.api.Views;
 import net.sf.webissues.core.MonitorOperationAdapter;
 import net.sf.webissues.core.WebIssuesClient;
 import net.sf.webissues.core.WebIssuesCorePlugin;
@@ -33,6 +26,13 @@ import org.eclipse.swt.widgets.MessageBox;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.dialogs.ElementListSelectionDialog;
 import org.eclipse.ui.dialogs.ISelectionStatusValidator;
+import org.webissues.api.Access;
+import org.webissues.api.IEnvironment;
+import org.webissues.api.IssueType;
+import org.webissues.api.User;
+import org.webissues.api.View;
+import org.webissues.api.ViewDefinition;
+import org.webissues.api.Views;
 
 public class WebIssuesViewManagementDialog extends ElementListSelectionDialog {
     private boolean multipleSelection;
@@ -40,7 +40,7 @@ public class WebIssuesViewManagementDialog extends ElementListSelectionDialog {
     private Button add;
     private List<Object> chosenItems;
     private TaskRepository taskRepository;
-    private Environment environment;
+    private IEnvironment environment;
     private Button edit;
     private View selectedView;
 
@@ -57,7 +57,7 @@ public class WebIssuesViewManagementDialog extends ElementListSelectionDialog {
         setTitles();
     }
 
-    public void setEnvironment(Environment environment) {
+    public void setEnvironment(IEnvironment environment) {
         this.environment = environment;
         List<View> v = new ArrayList<View>();
         for (IssueType type : environment.getTypes().values()) {

@@ -5,8 +5,6 @@ import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 
-import net.sf.webissues.api.Environment;
-import net.sf.webissues.api.NamedEntity;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.FocusAdapter;
@@ -24,6 +22,8 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 import org.eclipse.ui.PlatformUI;
+import org.webissues.api.IEnvironment;
+import org.webissues.api.NamedEntity;
 
 public abstract class AbstractSelector<T extends NamedEntity> extends Composite {
 
@@ -41,9 +41,9 @@ public abstract class AbstractSelector<T extends NamedEntity> extends Composite 
 
     private final boolean allowMultiple;
 
-    private final Environment environment;
+    private final IEnvironment environment;
 
-    public AbstractSelector(Environment environment, Composite parent, int style, String initialText, boolean allowMultiple) {
+    public AbstractSelector(IEnvironment environment, Composite parent, int style, String initialText, boolean allowMultiple) {
         super(parent, style);
         this.environment = environment;
         this.initialText = initialText;
@@ -192,7 +192,7 @@ public abstract class AbstractSelector<T extends NamedEntity> extends Composite 
         super.setEnabled(enabled);
     }
 
-    protected Environment getEnvironment() {
+    protected IEnvironment getEnvironment() {
         return environment;
     }
 

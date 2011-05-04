@@ -12,7 +12,7 @@ import org.apache.commons.httpclient.HttpException;
 import org.apache.commons.httpclient.HttpMethod;
 import org.webissues.api.Attribute.AttributeType;
 
-public class IssueType extends HashMap<Integer, Attribute> implements Serializable, Entity {
+public class IssueType extends HashMap<Integer, Attribute> implements Serializable, NamedEntity {
     private static final long serialVersionUID = -2967172058163844285L;
 
     private int id;
@@ -139,6 +139,24 @@ public class IssueType extends HashMap<Integer, Attribute> implements Serializab
                 return true;
             }
         }, operation);
+    }
+    
+    /**
+     * Get all folders across all projects that are of this type.
+     * 
+     * @param type type
+     * @return list of folders that are of this type
+     */
+    public Collection<Folder> getFolders() {
+        List<Folder> l = new ArrayList<Folder>();
+        for(Project project : types.getEnvironment().getProjects().values()) {
+            for(Folder folder : project.values()) {
+                if(folder.getType().equals(this)) {
+                    l.add(folder);
+                }
+            }
+        }
+        return l;
     }
     
     /**

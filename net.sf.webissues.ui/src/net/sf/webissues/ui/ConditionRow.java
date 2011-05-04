@@ -9,15 +9,6 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.List;
 
-import net.sf.webissues.api.Attribute;
-import net.sf.webissues.api.Condition;
-import net.sf.webissues.api.ConditionType;
-import net.sf.webissues.api.Environment;
-import net.sf.webissues.api.Folder;
-import net.sf.webissues.api.Project;
-import net.sf.webissues.api.IssueType;
-import net.sf.webissues.api.User;
-import net.sf.webissues.api.Util;
 
 import org.eclipse.mylyn.internal.provisional.commons.ui.CommonImages;
 import org.eclipse.mylyn.internal.provisional.commons.ui.DatePicker;
@@ -35,12 +26,21 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Spinner;
 import org.eclipse.swt.widgets.Text;
+import org.webissues.api.Attribute;
+import org.webissues.api.Condition;
+import org.webissues.api.ConditionType;
+import org.webissues.api.Folder;
+import org.webissues.api.IEnvironment;
+import org.webissues.api.IssueType;
+import org.webissues.api.Project;
+import org.webissues.api.User;
+import org.webissues.api.Util;
 
 @SuppressWarnings("restriction")
 public class ConditionRow {
 
     private Composite value;
-    private final net.sf.webissues.api.IssueType type;
+    private final org.webissues.api.IssueType type;
     private Combo attributeCombo;
     private Combo conditionCombo;
     private GridData comboGridData;
@@ -49,7 +49,7 @@ public class ConditionRow {
     private Condition condition;
     private List<ConditionRow> rows;
 
-    public ConditionRow(net.sf.webissues.api.IssueType type, Composite parent, Condition condition, List<ConditionRow> rows, boolean forView) {
+    public ConditionRow(org.webissues.api.IssueType type, Composite parent, Condition condition, List<ConditionRow> rows, boolean forView) {
         this.rows = rows;
         this.type = type;
 
@@ -199,9 +199,9 @@ public class ConditionRow {
             ConditionType conditionType = getSelectedConditionType();
             condition.setAttribute(attr);
             boolean multiple = conditionType.equals(ConditionType.IN);
-            if (attr.getId() == net.sf.webissues.api.IssueType.PROJECT_ATTR_ID) {
+            if (attr.getId() == org.webissues.api.IssueType.PROJECT_ATTR_ID) {
                 addProjects(gd, multiple);
-            } else if (attr.getId() == net.sf.webissues.api.IssueType.FOLDER_ATTR_ID) {
+            } else if (attr.getId() == org.webissues.api.IssueType.FOLDER_ATTR_ID) {
                 addFolders(gd, multiple);
             } else {
                 switch (attr.getAttributeType()) {
@@ -324,7 +324,7 @@ public class ConditionRow {
 
     private void addUser(GridData gd) {
         configureForTop();
-        Environment environment = type.getTypes().getEnvironment();
+        IEnvironment environment = type.getTypes().getEnvironment();
         final WebIssuesUserSelector text = new WebIssuesUserSelector(environment.getUsers().values(), environment, value, SWT.NONE,
                         "", true, "", false);
         // text.setBackground(value.getDisplay().getSystemColor(SWT.COLOR_LIST_BACKGROUND));

@@ -101,7 +101,7 @@ public class Attribute implements Entity, NamedEntity, Serializable, Comparable<
                     break;
                 case NUMERIC:
                     attribute.minValue = getIntAttribute(args, "min-value", Integer.MIN_VALUE);
-                    attribute.maxValue = getIntAttribute(args, "max-value", Integer.MIN_VALUE);
+                    attribute.maxValue = getIntAttribute(args, "max-value", Integer.MAX_VALUE);
                     attribute.decimalPlaces = getIntAttribute(args, "decimal", 0);
                     break;
             }

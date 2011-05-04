@@ -12,16 +12,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
 
-import net.sf.webissues.api.Attachment;
-import net.sf.webissues.api.Attribute;
-import net.sf.webissues.api.Authenticator;
-import net.sf.webissues.api.Client;
-import net.sf.webissues.api.Comment;
-import net.sf.webissues.api.Environment;
-import net.sf.webissues.api.Folder;
-import net.sf.webissues.api.Issue;
-import net.sf.webissues.api.IssueDetails;
-import net.sf.webissues.api.ProtocolException;
 
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.HttpException;
@@ -35,6 +25,16 @@ import org.eclipse.mylyn.commons.net.AuthenticationCredentials;
 import org.eclipse.mylyn.commons.net.AuthenticationType;
 import org.eclipse.mylyn.tasks.core.ITask;
 import org.eclipse.mylyn.tasks.core.TaskRepository;
+import org.webissues.api.Attachment;
+import org.webissues.api.Attribute;
+import org.webissues.api.Authenticator;
+import org.webissues.api.Client;
+import org.webissues.api.Comment;
+import org.webissues.api.Folder;
+import org.webissues.api.IEnvironment;
+import org.webissues.api.Issue;
+import org.webissues.api.IssueDetails;
+import org.webissues.api.ProtocolException;
 
 public class WebIssuesClient implements CredentialsProvider, Serializable, Authenticator {
 
@@ -135,7 +135,7 @@ public class WebIssuesClient implements CredentialsProvider, Serializable, Authe
         }
     }
 
-    public Environment getEnvironment() {
+    public IEnvironment getEnvironment() {
         return client.getEnvironment();
     }
 
@@ -268,7 +268,7 @@ public class WebIssuesClient implements CredentialsProvider, Serializable, Authe
 
     public void addComment(Comment comment, IProgressMonitor monitor) throws IOException, ProtocolException {
         try {
-            comment.getIssueDetails().addComment(comment, new MonitorOperationAdapter(monitor));
+            comment.getIssue().addComment(comment, new MonitorOperationAdapter(monitor));
         } finally {
             finishOp();
         }
@@ -276,7 +276,7 @@ public class WebIssuesClient implements CredentialsProvider, Serializable, Authe
     }
 
     @Override
-    public net.sf.webissues.api.Authenticator.Credentials getCredentials(URL url) {
+    public org.webissues.api.Authenticator.Credentials getCredentials(URL url) {
         try {
             final UsernamePasswordCredentials httpCredentials = getCredentials(null, url.getHost(), url.getPort(), false);
             return new Credentials() {

@@ -3,10 +3,6 @@ package net.sf.webissues.ui.editor;
 import java.util.ArrayList;
 import java.util.Set;
 
-import net.sf.webissues.api.Environment;
-import net.sf.webissues.api.Folder;
-import net.sf.webissues.api.Project;
-import net.sf.webissues.api.IssueType;
 import net.sf.webissues.core.WebIssuesAttribute;
 import net.sf.webissues.core.WebIssuesClient;
 import net.sf.webissues.core.WebIssuesCorePlugin;
@@ -26,6 +22,10 @@ import org.eclipse.mylyn.tasks.ui.editors.AttributeEditorFactory;
 import org.eclipse.mylyn.tasks.ui.editors.TaskEditor;
 import org.eclipse.mylyn.tasks.ui.editors.TaskEditorInput;
 import org.eclipse.mylyn.tasks.ui.editors.TaskEditorPartDescriptor;
+import org.webissues.api.Folder;
+import org.webissues.api.IEnvironment;
+import org.webissues.api.IssueType;
+import org.webissues.api.Project;
 
 public class WebIssuesTaskEditorPage extends AbstractTaskEditorPage {
 
@@ -74,7 +74,7 @@ public class WebIssuesTaskEditorPage extends AbstractTaskEditorPage {
                         TaskAttribute attribute = model.getTaskData().getRoot()
                                         .getAttribute(WebIssuesAttribute.FOLDER.getTaskKey());
                         IssueType currentType = null;
-                        Environment environment = client.getEnvironment();
+                        IEnvironment environment = client.getEnvironment();
                         if (existingTask) {
                             currentType = environment
                                             .getProjects()

@@ -1,7 +1,5 @@
 package net.sf.webissues.ui;
 
-import net.sf.webissues.api.Environment;
-import net.sf.webissues.api.View;
 
 import org.eclipse.core.runtime.Status;
 import org.eclipse.mylyn.tasks.core.TaskRepository;
@@ -9,12 +7,14 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.dialogs.SelectionStatusDialog;
+import org.webissues.api.IEnvironment;
+import org.webissues.api.View;
 
 public class WebIssuesViewDialog extends SelectionStatusDialog {
 
     private ViewEditor editor;
     private TaskRepository taskRepository;
-    private Environment environment;
+    private IEnvironment environment;
     private View view;
 
     public WebIssuesViewDialog(Shell parent, TaskRepository taskRepository) {
@@ -61,7 +61,7 @@ public class WebIssuesViewDialog extends SelectionStatusDialog {
         return dialogParent;
     }
 
-    public void setEnvironment(Environment environment) {
+    public void setEnvironment(IEnvironment environment) {
         this.environment = environment;
         if (editor != null) {
             editor.setEnvironment(environment);

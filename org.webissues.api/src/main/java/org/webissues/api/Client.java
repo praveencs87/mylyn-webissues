@@ -423,6 +423,7 @@ public class Client implements Serializable {
             public IssueDetails call() throws HttpException, IOException, ProtocolException {
                 HttpMethod method = doCommand("GET DETAILS " + issueId + " 0");
                 IssueDetails issueDetails = null;
+                Issue issue = null;
                 Map<Integer, Change> changeMap = null;
                 try {
                     for (List<String> response : readResponse(method.getResponseBodyAsStream())) {
@@ -436,7 +437,7 @@ public class Client implements Serializable {
                             if (issueDetails != null) {
                                 throw new Error("Received two issues");
                             }
-                            Issue issue = Issue.createFromResponse(response, environment);
+                            issue = Issue.createFromResponse(response, environment);
                             issueDetails = new IssueDetails(Client.this, issue);
                         } else if (response.get(0).equals("C")) {
                             if (issueDetails == null) {
@@ -448,9 +449,9 @@ public class Client implements Serializable {
                                     throw new Error("Expected changes before comment");
                                 }
                                 issueDetails.getComments().add(
-                                    Comment.createFromResponse(issueDetails, response, environment, changeMap));
+                                    Comment.createFromResponse(issue, response, environment, changeMap));
                             } else {
-                                issueDetails.getComments().add(Comment.createFromResponse(issueDetails, response, environment));
+                                issueDetails.getComments().add(Comment.createFromResponse(issue, response, environment));
                             }
                         } else if (response.get(0).equals("A")) {
                             if (issueDetails == null) {
@@ -462,9 +463,9 @@ public class Client implements Serializable {
                                     throw new Error("Expected changes before comment");
                                 }
                                 issueDetails.getAttachments().add(
-                                    Attachment.createFromResponse(issueDetails, response, environment, changeMap));
+                                    Attachment.createFromResponse(issue, response, environment, changeMap));
                             } else {
-                                issueDetails.getAttachments().add(Attachment.createFromResponse(issueDetails, response, environment));
+                                issueDetails.getAttachments().add(Attachment.createFromResponse(issue, response, environment));
                             }
                         } else if (response.get(0).equals("H")) {
                             if (issueDetails == null) {
@@ -473,7 +474,7 @@ public class Client implements Serializable {
                             if (changeMap == null) {
                                 changeMap = new HashMap<Integer, Change>();
                             }
-                            Change change = Change.createFromResponse(issueDetails, response, environment.getUsers(), environment);
+                            Change change = Change.createFromResponse(issue, response, environment.getUsers(), environment);
                             changeMap.put(change.getId(), change);
                             if(change.getType().equals(Type.VALUE_CHANGED) || change.getType().equals(Type.ISSUE_MOVED) ||  change.getType().equals(Type.ISSUE_RENAMED)) {
                                 issueDetails.getChanges().add(change);
@@ -505,7 +506,9 @@ public class Client implements Serializable {
                 HttpMethod method = doCommand("ADD ISSUE " + issue.getFolder().getId() + " '" + Util.escape(issue.getName()) + "'");
                 try {
                     List<String> response = readResponse(method.getResponseBodyAsStream()).iterator().next();
-                    return Integer.parseInt(response.get(1));
+                    int id = Integer.parseInt(response.get(1));
+                    issue.setId(id);
+                    return id;
                 } finally {
                     method.releaseConnection();
                 }

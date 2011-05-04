@@ -12,7 +12,7 @@ import org.apache.commons.httpclient.HttpMethod;
 /**
  * Map of {@link Projects}s.
  */
-public class Projects extends EntityMap<Project> implements Serializable {
+public class Projects extends NamedEntityMap<Project> implements Serializable {
 
     private static final long serialVersionUID = 1062522167070931646L;
     private final IEnvironment environment;

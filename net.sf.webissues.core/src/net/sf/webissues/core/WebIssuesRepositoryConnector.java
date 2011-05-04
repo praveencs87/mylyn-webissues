@@ -33,16 +33,6 @@ import java.util.TimeZone;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import net.sf.webissues.api.Access;
-import net.sf.webissues.api.Attribute;
-import net.sf.webissues.api.Client;
-import net.sf.webissues.api.Condition;
-import net.sf.webissues.api.Folder;
-import net.sf.webissues.api.Issue;
-import net.sf.webissues.api.Project;
-import net.sf.webissues.api.ProtocolException;
-import net.sf.webissues.api.IssueType;
-import net.sf.webissues.api.Util;
 
 import org.apache.commons.httpclient.HttpException;
 import org.eclipse.core.runtime.CoreException;
@@ -63,6 +53,16 @@ import org.eclipse.mylyn.tasks.core.data.TaskData;
 import org.eclipse.mylyn.tasks.core.data.TaskDataCollector;
 import org.eclipse.mylyn.tasks.core.data.TaskMapper;
 import org.eclipse.mylyn.tasks.core.sync.ISynchronizationSession;
+import org.webissues.api.Access;
+import org.webissues.api.Attribute;
+import org.webissues.api.Client;
+import org.webissues.api.Condition;
+import org.webissues.api.Folder;
+import org.webissues.api.Issue;
+import org.webissues.api.IssueType;
+import org.webissues.api.Project;
+import org.webissues.api.ProtocolException;
+import org.webissues.api.Util;
 
 /**
  * @author Steffen Pingel

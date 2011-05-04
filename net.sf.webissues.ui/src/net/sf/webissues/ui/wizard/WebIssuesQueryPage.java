@@ -19,16 +19,6 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import net.sf.webissues.api.Access;
-import net.sf.webissues.api.Condition;
-import net.sf.webissues.api.ConditionType;
-import net.sf.webissues.api.Environment;
-import net.sf.webissues.api.IssueType;
-import net.sf.webissues.api.ProtocolException;
-import net.sf.webissues.api.IssueTypes;
-import net.sf.webissues.api.Util;
-import net.sf.webissues.api.View;
-import net.sf.webissues.api.Views;
 import net.sf.webissues.core.WebIssuesClient;
 import net.sf.webissues.core.WebIssuesClientManager;
 import net.sf.webissues.core.WebIssuesCorePlugin;
@@ -70,6 +60,16 @@ import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Text;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.progress.IProgressService;
+import org.webissues.api.Access;
+import org.webissues.api.Condition;
+import org.webissues.api.ConditionType;
+import org.webissues.api.IEnvironment;
+import org.webissues.api.IssueType;
+import org.webissues.api.IssueTypes;
+import org.webissues.api.ProtocolException;
+import org.webissues.api.Util;
+import org.webissues.api.View;
+import org.webissues.api.Views;
 
 /**
  * Evolved from trac search page.
@@ -278,7 +278,7 @@ public class WebIssuesQueryPage extends AbstractRepositoryQueryPage {
     private void rebuildTypeList() {
         type.removeAll();
         if (types != null) {
-            for (net.sf.webissues.api.IssueType issueType : types.values()) {
+            for (org.webissues.api.IssueType issueType : types.values()) {
                 type.add(issueType.getName());
                 if (type.getItemCount() == 1) {
                     type.select(0);
@@ -292,11 +292,11 @@ public class WebIssuesQueryPage extends AbstractRepositoryQueryPage {
         viewCombo.removeAll();
         viewCombo.add("Custom query ...");
         viewCombo.select(0);
-        net.sf.webissues.api.IssueType type = getSelectedType();
-        Environment environment = type == null ? null : type.getTypes().getEnvironment();
+        org.webissues.api.IssueType type = getSelectedType();
+        IEnvironment environment = type == null ? null : type.getTypes().getEnvironment();
         views = type == null || type.getViews() == null ? null : type.getViews();
         if (views != null && !environment.getVersion().startsWith("0.")) {
-            for (net.sf.webissues.api.View view : views.values()) {
+            for (org.webissues.api.View view : views.values()) {
                 viewCombo.add(view.getName());
             }
             viewCombo.setEnabled(true);
@@ -455,7 +455,7 @@ public class WebIssuesQueryPage extends AbstractRepositoryQueryPage {
         boolean restored = false;
         IRepositoryQuery query = getQuery();
         try {
-            Environment environment = getEnvironment();
+            IEnvironment environment = getEnvironment();
             if (query != null) {
                 WebIssuesFilterQueryAdapter search = new WebIssuesFilterQueryAdapter(query, environment);
                 restoreWidgetValues(search);
@@ -549,7 +549,7 @@ public class WebIssuesQueryPage extends AbstractRepositoryQueryPage {
 
         // Search
         WebIssuesFilterQueryAdapter search = new WebIssuesFilterQueryAdapter();
-        net.sf.webissues.api.IssueType selectedType = getSelectedType();
+        org.webissues.api.IssueType selectedType = getSelectedType();
         search.setType(selectedType);
         View view = getSelectedView();
         if (view != null) {
@@ -615,7 +615,7 @@ public class WebIssuesQueryPage extends AbstractRepositoryQueryPage {
         query.setSummary(getQueryTitle());
     }
 
-    private Environment getEnvironment() throws HttpException, ProtocolException, IOException {
+    private IEnvironment getEnvironment() throws HttpException, ProtocolException, IOException {
         return getClient().getEnvironment();
     }
 

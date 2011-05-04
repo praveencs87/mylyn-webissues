@@ -3,9 +3,6 @@ package net.sf.webissues.ui.editor;
 import java.io.IOException;
 import java.util.Arrays;
 
-import net.sf.webissues.api.Environment;
-import net.sf.webissues.api.NamedEntity;
-import net.sf.webissues.api.ProtocolException;
 import net.sf.webissues.core.WebIssuesClient;
 import net.sf.webissues.core.WebIssuesCorePlugin;
 import net.sf.webissues.ui.AbstractSelector;
@@ -20,6 +17,9 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Text;
 import org.eclipse.ui.forms.widgets.FormToolkit;
+import org.webissues.api.IEnvironment;
+import org.webissues.api.NamedEntity;
+import org.webissues.api.ProtocolException;
 
 @SuppressWarnings("restriction")
 public abstract class AbstractSelectorAttributeEditor<T extends NamedEntity> extends AbstractAttributeEditor {
@@ -43,7 +43,7 @@ public abstract class AbstractSelectorAttributeEditor<T extends NamedEntity> ext
         if (!isReadOnly()) {
             try {
                 WebIssuesClient client = getClient();
-                Environment attributes = client.getEnvironment();
+                IEnvironment attributes = client.getEnvironment();
                 userPicker = createPicker(manager, parent, attributes);
                 toolkit.adapt(userPicker, false, false);
                 setControl(userPicker);
@@ -66,7 +66,7 @@ public abstract class AbstractSelectorAttributeEditor<T extends NamedEntity> ext
         setControl(text);
     }
 
-    protected abstract AbstractSelector<T> createPicker(TaskDataModel manager, Composite parent, Environment attributes);
+    protected abstract AbstractSelector<T> createPicker(TaskDataModel manager, Composite parent, IEnvironment attributes);
 
     public String getValue() {
         return getAttributeMapper().getValue(getTaskAttribute());

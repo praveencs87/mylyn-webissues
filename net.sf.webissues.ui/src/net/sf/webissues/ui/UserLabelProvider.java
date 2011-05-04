@@ -1,12 +1,12 @@
 package net.sf.webissues.ui;
 
-import net.sf.webissues.api.Access;
-import net.sf.webissues.api.User;
 
 import org.eclipse.jface.viewers.ILabelProvider;
 import org.eclipse.jface.viewers.ILabelProviderListener;
 import org.eclipse.mylyn.internal.provisional.commons.ui.CommonImages;
 import org.eclipse.swt.graphics.Image;
+import org.webissues.api.Access;
+import org.webissues.api.User;
 
 @SuppressWarnings("restriction")
 public class UserLabelProvider implements ILabelProvider {
