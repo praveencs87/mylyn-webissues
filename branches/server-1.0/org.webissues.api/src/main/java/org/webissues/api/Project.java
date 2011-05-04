@@ -8,7 +8,7 @@ import org.apache.commons.httpclient.HttpException;
 /**
  * Represents a single Project. A project consists of many {@link Folder}s.
  */
-public class Project extends EntityMap<Folder> implements Serializable, NamedEntity, Comparable<Project> {
+public class Project extends NamedEntityMap<Folder> implements Serializable, NamedEntity, Comparable<Project> {
 
     private static final long serialVersionUID = -5170541898454267445L;
 

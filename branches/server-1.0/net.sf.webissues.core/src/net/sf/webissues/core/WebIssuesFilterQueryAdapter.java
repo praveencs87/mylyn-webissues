@@ -8,13 +8,13 @@ import java.util.Collection;
 import java.util.List;
 import java.util.StringTokenizer;
 
-import net.sf.webissues.api.Condition;
-import net.sf.webissues.api.Environment;
-import net.sf.webissues.api.IssueType;
-import net.sf.webissues.api.Util;
-import net.sf.webissues.api.View;
 
 import org.eclipse.mylyn.tasks.core.IRepositoryQuery;
+import org.webissues.api.Condition;
+import org.webissues.api.IEnvironment;
+import org.webissues.api.IssueType;
+import org.webissues.api.Util;
+import org.webissues.api.View;
 
 public class WebIssuesFilterQueryAdapter {
 
@@ -34,12 +34,12 @@ public class WebIssuesFilterQueryAdapter {
         return conditions;
     }
 
-    public WebIssuesFilterQueryAdapter(IRepositoryQuery query, Environment environment) throws IOException {
+    public WebIssuesFilterQueryAdapter(IRepositoryQuery query, IEnvironment environment) throws IOException {
         this(new URL(query.getUrl()), environment);
         name = query.getSummary();
     }
 
-    public WebIssuesFilterQueryAdapter(URL url, Environment environment) throws IOException {
+    public WebIssuesFilterQueryAdapter(URL url, IEnvironment environment) throws IOException {
         searchComments = false;
         searchText = null;
         StringTokenizer t = new StringTokenizer(url.getQuery(), "&");
@@ -78,7 +78,7 @@ public class WebIssuesFilterQueryAdapter {
         this.view = view;
     }
 
-    public WebIssuesFilterQueryAdapter(Environment environment) {
+    public WebIssuesFilterQueryAdapter(IEnvironment environment) {
         type = environment.getTypes().size() > 0 ? environment.getTypes().values().iterator().next() : null;
     }
 

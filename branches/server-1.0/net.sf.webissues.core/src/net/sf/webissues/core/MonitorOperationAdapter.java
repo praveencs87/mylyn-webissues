@@ -1,8 +1,8 @@
 package net.sf.webissues.core;
 
-import net.sf.webissues.api.Operation;
 
 import org.eclipse.core.runtime.IProgressMonitor;
+import org.webissues.api.Operation;
 
 public class MonitorOperationAdapter implements Operation {
 

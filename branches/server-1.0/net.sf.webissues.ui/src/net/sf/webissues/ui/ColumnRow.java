@@ -7,8 +7,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import net.sf.webissues.api.Attribute;
-import net.sf.webissues.api.IssueType;
 
 import org.eclipse.mylyn.internal.provisional.commons.ui.CommonImages;
 import org.eclipse.swt.SWT;
@@ -19,6 +17,8 @@ import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
+import org.webissues.api.Attribute;
+import org.webissues.api.IssueType;
 
 @SuppressWarnings("restriction")
 public class ColumnRow {

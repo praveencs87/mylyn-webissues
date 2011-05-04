@@ -4,19 +4,19 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-import net.sf.webissues.api.Environment;
-import net.sf.webissues.api.User;
 
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Shell;
+import org.webissues.api.IEnvironment;
+import org.webissues.api.User;
 
 public class WebIssuesUserSelector extends AbstractSelector<User> {
 
     private Collection<User> users;
     private boolean includeAnyone;
 
-    public WebIssuesUserSelector(Collection<User> users, Environment environment, Composite parent, int style, String initialText,
+    public WebIssuesUserSelector(Collection<User> users, IEnvironment environment, Composite parent, int style, String initialText,
                                  boolean allowMultiple, String fieldName, boolean includeAnyone) {
         super(environment, parent, style, initialText, allowMultiple);
         this.users = users;
@@ -25,7 +25,7 @@ public class WebIssuesUserSelector extends AbstractSelector<User> {
 
     @Override
     public User getItemForText(String text) {
-        return getEnvironment().getUsers().getUserByName(text);
+        return getEnvironment().getUsers().getByName(text);
     }
 
     @Override

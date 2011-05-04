@@ -12,7 +12,7 @@ import org.apache.commons.httpclient.HttpMethod;
 /**
  * Map of {@link User}s.
  */
-public class Users extends EntityMap<User> implements Serializable {
+public class Users extends NamedEntityMap<User> implements Serializable {
 
     private static final long serialVersionUID = -45193382221486291L;
     private IEnvironment environment;
@@ -94,24 +94,9 @@ public class Users extends EntityMap<User> implements Serializable {
      * @param login user's login name
      * @return user or <code>null</code> if
      */
-    public User getUserByLogin(String login) {
+    public User getByLogin(String login) {
         for (User user : values()) {
             if (user.getLogin().equals(login)) {
-                return user;
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Get a user given it's name
-     * 
-     * @param name user's name
-     * @return user or <code>null</code> if
-     */
-    public User getUserByName(String name) {
-        for (User user : values()) {
-            if (user.getName().equals(name)) {
                 return user;
             }
         }

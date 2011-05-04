@@ -4,9 +4,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-import net.sf.webissues.api.Attribute;
-import net.sf.webissues.api.IssueType;
-import net.sf.webissues.api.View;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.ScrolledComposite;
@@ -18,6 +15,9 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
+import org.webissues.api.Attribute;
+import org.webissues.api.IssueType;
+import org.webissues.api.View;
 
 public class ColumnsEditor extends ScrolledComposite {
 

@@ -12,7 +12,6 @@ import java.util.List;
 import org.apache.commons.httpclient.HttpException;
 import org.webissues.api.Attribute.AttributeType;
 
-
 public class ViewDefinition extends ArrayList<Condition> implements Serializable {
 
     private static final long serialVersionUID = 8767016925155729108L;
@@ -21,7 +20,7 @@ public class ViewDefinition extends ArrayList<Condition> implements Serializable
     private boolean sortAscending;
     private Attribute sortAttribute;
     private View view;
-    
+
     public ViewDefinition(View view) {
         this.view = view;
     }
@@ -48,7 +47,7 @@ public class ViewDefinition extends ArrayList<Condition> implements Serializable
             }
         }
     }
-    
+
     public View getView() {
         return view;
     }
@@ -60,7 +59,7 @@ public class ViewDefinition extends ArrayList<Condition> implements Serializable
     public void addColumn(Attribute attribute) {
         columns.add(attribute);
     }
-    
+
     public void removeColumn(Attribute attribute) {
         columns.remove(attribute);
     }
@@ -91,8 +90,7 @@ public class ViewDefinition extends ArrayList<Condition> implements Serializable
             Attribute attr = getAttribute(type, col);
             if (attr != null) {
                 columns.add(attr);
-            }
-            else {
+            } else {
                 Client.LOG.warn("Unknown attribute " + col);
             }
         }
@@ -119,14 +117,13 @@ public class ViewDefinition extends ArrayList<Condition> implements Serializable
                 }
             }
             if (conditionAttribute != null) {
-                if(conditionAttribute.getAttributeType().equals(AttributeType.DATETIME)) {
+                if (conditionAttribute.getAttributeType().equals(AttributeType.DATETIME)) {
                     conditionValue = getDateValue(conditionAttribute.isDateOnly(), conditionValue);
-                }                
+                }
                 Condition c = new Condition(conditionType, conditionAttribute, conditionValue);
                 add(c);
-            }
-            else {
-                Client.LOG.warn("No attribute for " +fels);
+            } else {
+                Client.LOG.warn("No attribute for " + fels);
             }
             x++;
         }
@@ -137,10 +134,9 @@ public class ViewDefinition extends ArrayList<Condition> implements Serializable
     }
 
     private int viewAttributeIdToAttributeId(int id) {
-        if(id >= 1000) {
+        if (id >= 1000) {
             id -= 1000;
-        }
-        else {
+        } else {
             id = IssueType.NAME_ATTR_ID + id;
         }
         return id;
@@ -154,15 +150,19 @@ public class ViewDefinition extends ArrayList<Condition> implements Serializable
     public String toDefinitionString() {
         StringBuilder bui = new StringBuilder();
         bui.append("VIEW columns=\"");
-        for(int i = 0 ; i < columns.size(); i ++) {
-            if(i > 0) {
+        List<Attribute> actualColumns = new ArrayList<Attribute>(columns);
+        if(actualColumns.size() == 0 && view != null && view.getType() != null) {
+            actualColumns.addAll(view.getType().values());
+        }
+        for (int i = 0; i < columns.size(); i++) {
+            if (i > 0) {
                 bui.append(",");
             }
             bui.append(getViewAttributeId(columns.get(i).getId()));
         }
         bui.append("\" filters={");
-        for(int i = 0 ; i < size(); i ++) {
-            if(i > 0) {
+        for (int i = 0; i < size(); i++) {
+            if (i > 0) {
                 bui.append(",");
             }
             bui.append("\"");
@@ -175,27 +175,30 @@ public class ViewDefinition extends ArrayList<Condition> implements Serializable
             bui.append("\\\"\"");
         }
         bui.append("} sort-column=");
-        bui.append(getViewAttributeId(sortAttribute.getId()));
+        if (sortAttribute == null) {
+            bui.append(getViewAttributeId(actualColumns.get(0).getId()));
+        } else {
+            bui.append(getViewAttributeId(sortAttribute.getId()));
+        }
         bui.append(" sort-desc=");
         bui.append(sortAscending ? 0 : 1);
         return bui.toString();
     }
 
-
     public void update(Operation operation) throws HttpException, IOException, ProtocolException {
         final Client client = view.getType().getTypes().getEnvironment().getClient();
         client.doCall(new Call<Boolean>() {
             public Boolean call() throws HttpException, IOException, ProtocolException {
-                client.doCommand("MODIFY VIEW " + view.getId() + " '" + Util.escape(toDefinitionString()) + "'" );
+                client.doCommand("MODIFY VIEW " + view.getId() + " '" + Util.escape(toDefinitionString()) + "'");
                 view.setDefinition(ViewDefinition.this);
                 return true;
             }
         }, operation);
-        
+
     }
-    
+
     private int getViewAttributeId(int attrId) {
-        return attrId >= IssueType.NAME_ATTR_ID ? attrId - IssueType.NAME_ATTR_ID : attrId + 1000; 
+        return attrId >= IssueType.NAME_ATTR_ID ? attrId - IssueType.NAME_ATTR_ID : attrId + 1000;
     }
 
     public void setView(View view) {

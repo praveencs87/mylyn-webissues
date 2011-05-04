@@ -25,13 +25,14 @@ public class Attachment extends AbstractChange implements Serializable, Entity {
     /**
      * Constructor.
      * 
+     * @param issue issue the attachment is attached to
      * @param createdUser user that is creating this attachment
      * @param name the filename of the attachment
      * @param description a description of the attachment
      * @param size the size in bytes of the attachment
      */
-    public Attachment(IssueDetails issueDetails, User createdUser, String name, String description, long size) {
-        super(issueDetails, Type.FILE_ADDED, 0, Calendar.getInstance(), createdUser, Calendar.getInstance(), createdUser, null, null, null);
+    public Attachment(Issue issue, User createdUser, String name, String description, long size) {
+        super(issue, Type.FILE_ADDED, 0, Calendar.getInstance(), createdUser, Calendar.getInstance(), createdUser, null, null, null);
         this.description = description;
         this.name = name;
         this.size = size;
@@ -40,7 +41,7 @@ public class Attachment extends AbstractChange implements Serializable, Entity {
     /*
      * Constructor used internally.
      */
-    protected Attachment(IssueDetails issueDetails, int id, String name, Calendar createdDate, User createdUser, Calendar modifiedDate, User modifiedUser,
+    protected Attachment(Issue issueDetails, int id, String name, Calendar createdDate, User createdUser, Calendar modifiedDate, User modifiedUser,
                          long size, String description) {
         super(issueDetails, Type.FILE_ADDED, id, createdDate, createdUser, modifiedDate, modifiedUser, null, null, null);
         this.name = name;
@@ -62,7 +63,7 @@ public class Attachment extends AbstractChange implements Serializable, Entity {
      * @throws IllegalArgumentException if response is incorrect size or not an
      *         attachment response
      */
-    protected static Attachment createFromResponse(IssueDetails issue, List<String> response, IEnvironment environment) {
+    protected static Attachment createFromResponse(Issue issue, List<String> response, IEnvironment environment) {
         if (response.size() != 8 || !response.get(0).equals("A")) {
             throw new IllegalArgumentException(
                             "Incorrect response. Expected 'A attachmentId issueId 'name' createdDate createdUser size 'description'");
@@ -80,7 +81,7 @@ public class Attachment extends AbstractChange implements Serializable, Entity {
      * @throws ProtocolException 
      */
     public void delete(Operation operation) throws IOException, ProtocolException {
-        final Client client = getIssueDetails().getIssue().getFolder().getProject().getProjects().getEnvironment().getClient();
+        final Client client = getIssue().getFolder().getProject().getProjects().getEnvironment().getClient();
         client.doCall(new Call<Boolean>() {
             public Boolean call() throws HttpException, IOException, ProtocolException {
                 client.doCommand("DELETE ATTACHMENT " + getId());
@@ -101,7 +102,7 @@ public class Attachment extends AbstractChange implements Serializable, Entity {
      */
     public InputStream getAttachmentData(Operation operation) throws HttpException, IOException,
                     ProtocolException {
-        final Client client = getIssueDetails().getIssue().getFolder().getProject().getProjects().getEnvironment().getClient();
+        final Client client = getIssue().getFolder().getProject().getProjects().getEnvironment().getClient();
         return client.getAttachmentData(getId(), operation);
 
     }
@@ -139,7 +140,7 @@ public class Attachment extends AbstractChange implements Serializable, Entity {
                         + "]";
     }
 
-    public static Attachment createFromResponse(IssueDetails issueDetails, List<String> response, IEnvironment environment,
+    public static Attachment createFromResponse(Issue issue, List<String> response, IEnvironment environment,
                                                 Map<Integer, Change> changeMap) {
 
         if (response.size() != 5 || !response.get(0).equals("A")) {
@@ -151,7 +152,7 @@ public class Attachment extends AbstractChange implements Serializable, Entity {
         if (change == null) {
             throw new Error("No change for ID " + id);
         }
-        return new Attachment(issueDetails, id, response.get(2), change.getCreatedDate(), change.getCreatedUser(), change.getModifiedDate(),
+        return new Attachment(issue, id, response.get(2), change.getCreatedDate(), change.getCreatedUser(), change.getModifiedDate(),
                         change.getModifiedUser(), Long.parseLong(response.get(3)), response.get(4));
     }
 }

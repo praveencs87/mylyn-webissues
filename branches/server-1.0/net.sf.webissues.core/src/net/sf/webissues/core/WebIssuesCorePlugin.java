@@ -3,7 +3,6 @@ package net.sf.webissues.core;
 import java.io.IOException;
 import java.net.MalformedURLException;
 
-import net.sf.webissues.api.ProtocolException;
 
 import org.apache.commons.httpclient.HttpException;
 import org.eclipse.core.runtime.IPath;
@@ -15,6 +14,7 @@ import org.eclipse.core.runtime.Plugin;
 import org.eclipse.mylyn.tasks.core.RepositoryStatus;
 import org.eclipse.mylyn.tasks.core.TaskRepository;
 import org.osgi.framework.BundleContext;
+import org.webissues.api.ProtocolException;
 
 public class WebIssuesCorePlugin extends Plugin {
 

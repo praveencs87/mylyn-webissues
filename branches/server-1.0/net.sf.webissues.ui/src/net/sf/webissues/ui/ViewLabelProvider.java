@@ -1,11 +1,11 @@
 package net.sf.webissues.ui;
 
-import net.sf.webissues.api.View;
 
 import org.eclipse.jface.viewers.ILabelProvider;
 import org.eclipse.jface.viewers.ILabelProviderListener;
 import org.eclipse.mylyn.internal.provisional.commons.ui.CommonImages;
 import org.eclipse.swt.graphics.Image;
+import org.webissues.api.View;
 
 @SuppressWarnings("restriction")
 public class ViewLabelProvider implements ILabelProvider {

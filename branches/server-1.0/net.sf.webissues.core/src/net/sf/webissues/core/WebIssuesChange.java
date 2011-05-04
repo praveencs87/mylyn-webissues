@@ -2,14 +2,14 @@ package net.sf.webissues.core;
 
 import java.util.Calendar;
 
-import net.sf.webissues.api.AbstractChange.Type;
-import net.sf.webissues.api.Change;
 
 import org.eclipse.core.runtime.Assert;
 import org.eclipse.mylyn.tasks.core.IRepositoryPerson;
 import org.eclipse.mylyn.tasks.core.ITask;
 import org.eclipse.mylyn.tasks.core.TaskRepository;
 import org.eclipse.mylyn.tasks.core.data.TaskAttribute;
+import org.webissues.api.Change;
+import org.webissues.api.AbstractChange.Type;
 
 public class WebIssuesChange {
 
