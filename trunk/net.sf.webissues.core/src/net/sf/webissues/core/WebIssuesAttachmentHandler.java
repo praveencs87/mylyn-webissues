@@ -13,13 +13,6 @@ package net.sf.webissues.core;
 
 import java.io.InputStream;
 
-import net.sf.webissues.api.Attachment;
-import net.sf.webissues.api.Comment;
-import net.sf.webissues.api.Environment;
-import net.sf.webissues.api.IssueDetails;
-import net.sf.webissues.api.User;
-import net.sf.webissues.api.Util;
-
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.OperationCanceledException;
@@ -30,6 +23,13 @@ import org.eclipse.mylyn.tasks.core.data.AbstractTaskAttachmentHandler;
 import org.eclipse.mylyn.tasks.core.data.AbstractTaskAttachmentSource;
 import org.eclipse.mylyn.tasks.core.data.TaskAttachmentMapper;
 import org.eclipse.mylyn.tasks.core.data.TaskAttribute;
+import org.webissues.api.Attachment;
+import org.webissues.api.Comment;
+import org.webissues.api.IEnvironment;
+import org.webissues.api.Issue;
+import org.webissues.api.IssueDetails;
+import org.webissues.api.User;
+import org.webissues.api.Util;
 
 /**
  * @author Steffen Pingel
@@ -89,10 +89,11 @@ public class WebIssuesAttachmentHandler extends AbstractTaskAttachmentHandler {
             monitor.beginTask("Uploading attachment", IProgressMonitor.UNKNOWN);
             try {
                 WebIssuesClient client = connector.getClientManager().getClient(repository, monitor);
-                IssueDetails issue = client.getIssueDetails(Integer.parseInt(task.getTaskId()), monitor);
-                Environment environment = client.getEnvironment();
-                User owner = user == null ? environment.getOwnerUser() : environment.getUsers().getUserByLogin(user);
-                Attachment attachment = new Attachment(owner, filename, description, length);
+                IssueDetails issueDetails = client.getIssueDetails(Integer.parseInt(task.getTaskId()), monitor);
+                Issue issue = issueDetails.getIssue();
+                IEnvironment environment = client.getEnvironment();
+                User owner = user == null ? environment.getOwnerUser() : environment.getUsers().getByLogin(user);
+                Attachment attachment = new Attachment(issue, owner, filename, description, length);
                 InputStream inputStream = source.createInputStream(monitor);
                 client.putAttachmentData(Integer.parseInt(task.getTaskId()), attachment, inputStream, attachment.getSize(),
                     "application/octet-stream", monitor);

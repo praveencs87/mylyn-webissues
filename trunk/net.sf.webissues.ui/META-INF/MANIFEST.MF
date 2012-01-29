@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: WebIssues Mylyn UI
 Bundle-SymbolicName: net.sf.webissues.ui;singleton:=true
-Bundle-Version: 0.9.4.qualifier
+Bundle-Version: 0.16.2.qualifier
 Bundle-Activator: net.sf.webissues.ui.WebIssuesUiPlugin
 Require-Bundle: org.eclipse.core.runtime,
  org.eclipse.ui,
@@ -11,7 +11,7 @@ Require-Bundle: org.eclipse.core.runtime,
  org.eclipse.mylyn.tasks.ui,
  org.eclipse.mylyn.commons.net,
  org.eclipse.mylyn.commons.ui,
- net.sf.webissues.api,
+ org.webissues.api,
  net.sf.webissues.core,
  org.eclipse.ui.forms;bundle-version="3.4.1"
 Bundle-ActivationPolicy: lazy

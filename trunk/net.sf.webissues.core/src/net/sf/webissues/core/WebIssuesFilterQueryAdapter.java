@@ -8,35 +8,38 @@ import java.util.Collection;
 import java.util.List;
 import java.util.StringTokenizer;
 
-import net.sf.webissues.api.Environment;
-import net.sf.webissues.api.Type;
-import net.sf.webissues.api.Util;
 
 import org.eclipse.mylyn.tasks.core.IRepositoryQuery;
+import org.webissues.api.Condition;
+import org.webissues.api.IEnvironment;
+import org.webissues.api.IssueType;
+import org.webissues.api.Util;
+import org.webissues.api.View;
 
 public class WebIssuesFilterQueryAdapter {
 
     private static final long serialVersionUID = 5626098838765595799L;
-    private List<WebIssuesFilterCondition> conditions = new ArrayList<WebIssuesFilterCondition>();
+    private List<Condition> conditions = new ArrayList<Condition>();
     private String name;
-    private Type type;
+    private IssueType type;
     private String searchText;
+    private View view;
     private boolean searchComments;
 
     public WebIssuesFilterQueryAdapter() {
         super();
     }
 
-    public Collection<WebIssuesFilterCondition> getConditions() {
+    public Collection<Condition> getConditions() {
         return conditions;
     }
 
-    public WebIssuesFilterQueryAdapter(IRepositoryQuery query, Environment environment) throws IOException {
+    public WebIssuesFilterQueryAdapter(IRepositoryQuery query, IEnvironment environment) throws IOException {
         this(new URL(query.getUrl()), environment);
         name = query.getSummary();
     }
 
-    public WebIssuesFilterQueryAdapter(URL url, Environment environment) throws IOException {
+    public WebIssuesFilterQueryAdapter(URL url, IEnvironment environment) throws IOException {
         searchComments = false;
         searchText = null;
         StringTokenizer t = new StringTokenizer(url.getQuery(), "&");
@@ -60,12 +63,22 @@ public class WebIssuesFilterQueryAdapter {
             } else if (name.equals("searchText")) {
                 searchText = value;
             } else if (name.equals("attribute")) {
-                conditions.add(WebIssuesFilterCondition.fromParameterValue(value, environment));
+                conditions.add(new Condition(value, type));
+            } else if (name.equals("viewId")) {
+                view = type.getViews().get(Integer.parseInt(value));
             }
         }
     }
 
-    public WebIssuesFilterQueryAdapter(Environment environment) {
+    public View getView() {
+        return view;
+    }
+
+    public void setView(View view) {
+        this.view = view;
+    }
+
+    public WebIssuesFilterQueryAdapter(IEnvironment environment) {
         type = environment.getTypes().size() > 0 ? environment.getTypes().values().iterator().next() : null;
     }
 
@@ -77,7 +90,7 @@ public class WebIssuesFilterQueryAdapter {
         return searchComments;
     }
 
-    public Type getType() {
+    public IssueType getType() {
         return type;
     }
 
@@ -92,18 +105,30 @@ public class WebIssuesFilterQueryAdapter {
             buf.append("&searchText=" + Util.urlEncode(searchText));
         }
         buf.append("&typeId=" + type.getId());
-        for (WebIssuesFilterCondition condition : conditions) {
-            buf.append("&attribute=" + Util.urlEncode(condition.getExpression()));
+        if (view != null) {
+            buf.append("&viewId=" + view.getId());
+        }
+        for (Condition condition : conditions) {
+            buf.append("&attribute=" + Util.urlEncode(condition.toParameter()));
         }
         return buf.toString();
     }
 
-    public void setType(Type type) {
+    public void setType(IssueType type) {
         this.type = type;
     }
 
-    public void addCondition(WebIssuesFilterCondition condition) {
+    public void addCondition(Condition condition) {
         conditions.add(condition);
+    }
+
+    public Collection<Condition> getAllConditions() {
+        List<Condition> all = new ArrayList<Condition>();
+        if(view != null && view.getDefinition() != null) {
+            all.addAll(view.getDefinition());
+        }
+        all.addAll(conditions);
+        return all;
     }
 
 }

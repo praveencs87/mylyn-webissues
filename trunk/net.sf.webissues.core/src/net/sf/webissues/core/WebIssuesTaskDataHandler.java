@@ -19,27 +19,13 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import net.sf.webissues.api.Attachment;
-import net.sf.webissues.api.Attribute;
-import net.sf.webissues.api.Change;
-import net.sf.webissues.api.Client;
-import net.sf.webissues.api.Comment;
-import net.sf.webissues.api.Environment;
-import net.sf.webissues.api.Folder;
-import net.sf.webissues.api.Issue;
-import net.sf.webissues.api.IssueDetails;
-import net.sf.webissues.api.Project;
-import net.sf.webissues.api.ProtocolException;
-import net.sf.webissues.api.Type;
-import net.sf.webissues.api.User;
-import net.sf.webissues.api.Util;
 
 import org.apache.commons.httpclient.HttpException;
 import org.eclipse.core.runtime.CoreException;
@@ -49,9 +35,9 @@ import org.eclipse.core.runtime.OperationCanceledException;
 import org.eclipse.mylyn.commons.net.Policy;
 import org.eclipse.mylyn.tasks.core.ITaskMapping;
 import org.eclipse.mylyn.tasks.core.RepositoryResponse;
+import org.eclipse.mylyn.tasks.core.RepositoryResponse.ResponseKind;
 import org.eclipse.mylyn.tasks.core.RepositoryStatus;
 import org.eclipse.mylyn.tasks.core.TaskRepository;
-import org.eclipse.mylyn.tasks.core.RepositoryResponse.ResponseKind;
 import org.eclipse.mylyn.tasks.core.data.AbstractTaskDataHandler;
 import org.eclipse.mylyn.tasks.core.data.TaskAttachmentMapper;
 import org.eclipse.mylyn.tasks.core.data.TaskAttribute;
@@ -59,6 +45,22 @@ import org.eclipse.mylyn.tasks.core.data.TaskAttributeMapper;
 import org.eclipse.mylyn.tasks.core.data.TaskAttributeMetaData;
 import org.eclipse.mylyn.tasks.core.data.TaskCommentMapper;
 import org.eclipse.mylyn.tasks.core.data.TaskData;
+import org.webissues.api.Attachment;
+import org.webissues.api.Attribute;
+import org.webissues.api.Change;
+import org.webissues.api.Client;
+import org.webissues.api.Comment;
+import org.webissues.api.Folder;
+import org.webissues.api.IEnvironment;
+import org.webissues.api.Issue;
+import org.webissues.api.IssueDetails;
+import org.webissues.api.IssueType;
+import org.webissues.api.Project;
+import org.webissues.api.Projects;
+import org.webissues.api.ProtocolException;
+import org.webissues.api.User;
+import org.webissues.api.Util;
+import org.webissues.api.Attribute.AttributeType;
 
 /**
  * @author Steffen Pingel
@@ -100,8 +102,8 @@ public class WebIssuesTaskDataHandler extends AbstractTaskDataHandler {
 
     TaskData createTaskDataFromIssueDetails(WebIssuesClient client, TaskRepository repository, IssueDetails issueDetails,
                                             IProgressMonitor monitor) throws CoreException {
-        TaskData taskData = new TaskData(getAttributeMapper(repository), WebIssuesCorePlugin.CONNECTOR_KIND, repository
-                        .getRepositoryUrl(), issueDetails.getIssue().getId() + "");
+        TaskData taskData = new TaskData(getAttributeMapper(repository), WebIssuesCorePlugin.CONNECTOR_KIND,
+                        repository.getRepositoryUrl(), issueDetails.getIssue().getId() + "");
         taskData.setVersion(TASK_DATA_VERSION);
         try {
             createDefaultAttributes(taskData, client.getEnvironment(), issueDetails.getIssue());
@@ -117,8 +119,8 @@ public class WebIssuesTaskDataHandler extends AbstractTaskDataHandler {
 
     TaskData createTaskDataFromIssue(WebIssuesClient client, TaskRepository repository, Issue issue, IProgressMonitor monitor)
                     throws CoreException {
-        TaskData taskData = new TaskData(getAttributeMapper(repository), WebIssuesCorePlugin.CONNECTOR_KIND, repository
-                        .getRepositoryUrl(), String.valueOf(issue.getId()));
+        TaskData taskData = new TaskData(getAttributeMapper(repository), WebIssuesCorePlugin.CONNECTOR_KIND,
+                        repository.getRepositoryUrl(), String.valueOf(issue.getId()));
         taskData.setVersion(TASK_DATA_VERSION);
         try {
             createDefaultAttributes(taskData, client.getEnvironment(), issue);
@@ -150,9 +152,21 @@ public class WebIssuesTaskDataHandler extends AbstractTaskDataHandler {
         doDateAttribute(TaskAttribute.DATE_MODIFICATION, data, changedAttributes, issue.getModifiedDate());
         doUser(client, WebIssuesAttribute.MODIFIED_BY.getTaskKey(), data, changedAttributes, issue.getModifiedUser());
 
-        // Completed
-        if (client.isCompletedStatus(issue.getAttributeValueByName("Status"))) {
+        // Dates
+        if (client.isCompletedStatus(issue.getAttributeValueByName(client.getStatusAttributeName()))) {
             doDateAttribute(TaskAttribute.DATE_COMPLETION, data, changedAttributes, issue.getModifiedDate());
+        }
+        if (client.getDueDateAttributeName() != null && !client.getDueDateAttributeName().equals("")) {
+            try {
+                Calendar date = parseDateAttribute(repository, issue, client.getDueDateAttributeName());
+                if (date != null) {
+                    doDateAttribute(TaskAttribute.DATE_DUE, data, changedAttributes, date);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        if (client.getEstimateAttributeName() != null && !client.getEstimateAttributeName().equals("")) {
         }
 
         TaskAttribute typeAttribute = data.getRoot().getAttribute(TaskAttribute.TASK_KIND);
@@ -174,22 +188,42 @@ public class WebIssuesTaskDataHandler extends AbstractTaskDataHandler {
         }
     }
 
+    private static Calendar parseDateAttribute(TaskRepository repository, Issue issue, String attributeName) {
+        Folder folder = issue.getFolder();
+        IssueType type = folder.getType();
+        Attribute attr = type.getByName(attributeName);
+        if (attr != null && attr.getType().equals(Attribute.AttributeType.DATETIME)) {
+            DateFormat fmt = new SimpleDateFormat(attr.isDateOnly() ? Client.DATEONLY_FORMAT : Client.DATETIME_FORMAT);
+            Date d;
+            try {
+                String val = issue.getAttributeValueByName(attributeName);
+                d = fmt.parse(val);
+            } catch (ParseException e) {
+                return null;
+            }
+            Calendar c = Calendar.getInstance();
+            c.setTime(d);
+            return c;
+        }
+        return null;
+    }
+
     public static Set<TaskAttribute> updateTaskData(Set<TaskAttribute> changedAttributes, WebIssuesClient client,
                                                     TaskRepository repository, TaskData data, IssueDetails issue,
                                                     IProgressMonitor monitor) throws HttpException, ProtocolException, IOException {
         doDateAttribute(TaskAttribute.DATE_CREATION, data, changedAttributes, issue.getIssue().getCreatedDate());
         doDateAttribute(TaskAttribute.DATE_MODIFICATION, data, changedAttributes, issue.getIssue().getModifiedDate());
 
-        Environment environment = WebIssuesCorePlugin.getDefault().getConnector().getClientManager().getClient(repository, monitor)
-                        .getEnvironment();
+        IEnvironment environment = WebIssuesCorePlugin.getDefault().getConnector().getClientManager()
+                        .getClient(repository, monitor).getEnvironment();
         Folder folder = issue.getIssue().getFolder();
-        Type type = folder.getType();
+        IssueType type = folder.getType();
 
         // Set the project and folder attributes
         TaskAttribute projectAttribute = data.getRoot().getAttribute(WebIssuesAttribute.PROJECT.getTaskKey());
         TaskAttribute folderAttribute = data.getRoot().getAttribute(WebIssuesAttribute.FOLDER.getTaskKey());
         projectAttribute.setValue(String.valueOf(folder.getProject().getId()));
-        rebuildFolders(environment, projectAttribute, data, folderAttribute);
+        rebuildFolders(environment, projectAttribute, data, folderAttribute, issue.getIssue().getFolder().getType());
         folderAttribute.setValue(String.valueOf(folder.getId()));
 
         // Remove all webissues attributes exception project and folder
@@ -205,13 +239,21 @@ public class WebIssuesTaskDataHandler extends AbstractTaskDataHandler {
         TaskAttribute priorityAttribute = data.getRoot().getAttribute(TaskAttribute.PRIORITY);
 
         for (Attribute attr : type.values()) {
-            if (priorityAttribute == null || !attr.getName().equals("Priority")) {
+            if (!attr.isBuiltIn() && (priorityAttribute == null || !attr.getName().equals("Priority"))) {
                 String defaultValue = attr.getDefaultValue();
                 String attributeId = WEBISSUES_ATTRIBUTE_KEY_PREFIX + attr.getId();
+
+                // Set as default if nothing set
+                String value = issue.getIssue().get(attr);
+                if (Util.isNullOrBlank(value)) {
+                    value = defaultValue;
+                }
+
+                // Set up the task attribute
                 TaskAttribute taskAttr = data.getRoot().createAttribute(attributeId);
                 TaskAttributeMetaData metaData = taskAttr.getMetaData();
                 metaData.setKind(TaskAttribute.KIND_DEFAULT);
-                switch (attr.getType()) {
+                switch (attr.getAttributeType()) {
                     case DATETIME:
                         if (attr.isDateOnly()) {
                             metaData.setType(TaskAttribute.TYPE_DATE);
@@ -229,6 +271,9 @@ public class WebIssuesTaskDataHandler extends AbstractTaskDataHandler {
                         metaData.setType(TaskAttribute.TYPE_PERSON);
                         metaData.setKind(TaskAttribute.KIND_PEOPLE);
                         metaData.putValue("membersOnly", String.valueOf(attr.isMembersOnly()));
+                        if ("[Me]".equals(value)) {
+                            value = type.getTypes().getEnvironment().getOwnerUser().getName();
+                        }
                         break;
                     case ENUM:
                         metaData.setType(TaskAttribute.TYPE_SINGLE_SELECT);
@@ -242,19 +287,13 @@ public class WebIssuesTaskDataHandler extends AbstractTaskDataHandler {
                         break;
                 }
 
-                // Set as default if nothing set
-                String value = issue.getIssue().get(attr);
-                if (Util.isNullOrBlank(value)) {
-                    value = defaultValue;
-                }
-
                 // Format the value if it is numeric
-                if (attr.getType().equals(Attribute.Type.NUMERIC) && attr.getDecimalPlaces() > 0) {
+                if (attr.getType().equals(Attribute.AttributeType.NUMERIC) && attr.getDecimalPlaces() > 0) {
                     DecimalFormat fmt = new DecimalFormat();
                     fmt.setMinimumFractionDigits(attr.getDecimalPlaces());
                     fmt.setMaximumFractionDigits(attr.getDecimalPlaces());
                     taskAttr.setValue(fmt.format(Util.isNullOrBlank(value) ? 0d : Double.parseDouble(value)));
-                } else if (attr.getType().equals(Attribute.Type.DATETIME)) {
+                } else if (attr.getType().equals(Attribute.AttributeType.DATETIME)) {
                     DateFormat fmt = new SimpleDateFormat(attr.isDateOnly() ? Client.DATEONLY_FORMAT : Client.DATETIME_FORMAT);
                     try {
                         taskAttr.setValue(value == null ? "" : String.valueOf(fmt.parse(value).getTime()));
@@ -314,6 +353,7 @@ public class WebIssuesTaskDataHandler extends AbstractTaskDataHandler {
             mapper.setChangeId(String.valueOf(count));
             mapper.setUser(repository.createPerson(change.getModifiedUser().getName()));
             mapper.setAttributeName(change.getAttribute() == null ? "Name" : change.getAttribute().getName());
+            mapper.setType(change.getType());
             mapper.setOldValue(change.getOldValue());
             mapper.setNewValue(change.getNewValue());
             mapper.setDate(change.getModifiedDate());
@@ -345,17 +385,51 @@ public class WebIssuesTaskDataHandler extends AbstractTaskDataHandler {
         }
     }
 
-    public static void createDefaultAttributes(TaskData data, Environment environment, Issue issue) {
+    public static void createDefaultAttributes(TaskData data, IEnvironment environment, Issue issue) {
         boolean existingTask = issue != null;
         data.setVersion(TASK_DATA_VERSION);
         createAttribute(data, WebIssuesAttribute.ID);
         createAttribute(data, WebIssuesAttribute.SUMMARY);
-        TaskAttribute projectAttr = createAttribute(data, WebIssuesAttribute.PROJECT, environment.getProjects().values().toArray());
-        projectAttr.getMetaData().setReadOnly(existingTask);
+
+        boolean readOnly = existingTask;
+        List<Project> projects = new ArrayList<Project>();
+        boolean versionZero = environment.getVersion().startsWith("0.");
+        if (existingTask && !versionZero) {
+            /*
+             * 1.0 allows moving to a different project (i.e. folder, as long as
+             * the type is the same). So ony add projects that are of the same
+             * type
+             */
+            for (Project p : environment.getProjects().values()) {
+                boolean hasFolderOfSameType = false;
+                for (Folder f : p.values()) {
+                    if (f.getType().equals(issue.getFolder().getType())) {
+                        hasFolderOfSameType = true;
+                        break;
+                    }
+                }
+                if (hasFolderOfSameType) {
+                    projects.add(p);
+                }
+            }
+            readOnly = projects.size() < 2;
+        } else {
+            projects = new ArrayList<Project>(environment.getProjects().values());
+        }
+        TaskAttribute projectAttr = createAttribute(data, WebIssuesAttribute.PROJECT, (Project[]) projects.toArray(new Project[0]));
+        if (!existingTask) {
+            int lastProjectId = WebIssuesCorePlugin.getDefault().getPluginPreferences().getInt("lastProjectUsedForNewTask");
+            if (lastProjectId > 0) {
+                projectAttr.setValue(String.valueOf(lastProjectId));
+            }
+        }
+        projectAttr.getMetaData().setReadOnly(readOnly);
 
         TaskAttribute folderAttr = createAttribute(data, WebIssuesAttribute.FOLDER);
-        folderAttr.getMetaData().setReadOnly(existingTask);
-        rebuildFolders(environment, projectAttr, data, folderAttr);
+        folderAttr.getMetaData().setReadOnly(!existingTask || !versionZero);
+        // 1.0 allows moving to a different folder
+        rebuildFolders(environment, projectAttr, data, folderAttr, issue == null ? null : issue.getFolder().getType());
+        folderAttr.getMetaData().setReadOnly(existingTask && versionZero);
         if (existingTask) {
             createAttribute(data, WebIssuesAttribute.TYPE);
             createAttribute(data, WebIssuesAttribute.CREATED_BY);
@@ -363,13 +437,17 @@ public class WebIssuesTaskDataHandler extends AbstractTaskDataHandler {
             createAttribute(data, WebIssuesAttribute.CREATED_DATE);
             createAttribute(data, WebIssuesAttribute.MODIFIED_DATE);
             createAttribute(data, WebIssuesAttribute.COMPLETION_DATE);
+            createAttribute(data, WebIssuesAttribute.DUE_DATE);
 
             // Special handling for any existing Priority attribute
             Attribute attribute = issue.getFolder().getType().getByName("Priority");
             if (attribute != null) {
                 List<Integer> values = new ArrayList<Integer>();
-                for (int i = (int) attribute.getMinValue(); i <= attribute.getMaxValue(); i++) {
-                    values.add(i);
+                double range = attribute.getMaxValue() - attribute.getMinValue();
+                if (range < 20) {
+                    for (int i = (int) attribute.getMinValue(); i <= attribute.getMaxValue(); i++) {
+                        values.add(i);
+                    }
                 }
                 createAttribute(data, WebIssuesAttribute.PRIORITY, values.toArray());
             }
@@ -390,7 +468,8 @@ public class WebIssuesTaskDataHandler extends AbstractTaskDataHandler {
         return attr;
     }
 
-    public static void rebuildFolders(Environment environment, TaskAttribute projectAttribute, TaskData data, TaskAttribute attr) {
+    public static void rebuildFolders(IEnvironment environment, TaskAttribute projectAttribute, TaskData data, TaskAttribute attr,
+                                      IssueType currentType) {
         String value = projectAttribute.getValue();
         attr.clearOptions();
         if (!Util.isNullOrBlank(value)) {
@@ -398,10 +477,12 @@ public class WebIssuesTaskDataHandler extends AbstractTaskDataHandler {
             if (project != null) {
                 attr.clearOptions();
                 for (Folder folder : project.values()) {
-                    String key = String.valueOf(folder.getId());
-                    attr.putOption(key, folder.getName() + " (" + folder.getType().getName() + ")");
-                    if (attr.getOptions().size() == 1) {
-                        attr.setValue(key);
+                    if (currentType == null || folder.getType().equals(currentType)) {
+                        String key = String.valueOf(folder.getId());
+                        attr.putOption(key, folder.getName() + " (" + folder.getType().getName() + ")");
+                        if (attr.getOptions().size() == 1) {
+                            attr.setValue(key);
+                        }
                     }
                 }
             }
@@ -461,25 +542,34 @@ public class WebIssuesTaskDataHandler extends AbstractTaskDataHandler {
                     int id = client.createIssue(issue, monitor);
                     String newComment = getNewComment(taskData);
                     if (!Util.isNullOrBlank(newComment)) {
-                        IssueDetails details = client.getIssueDetails(id, monitor);
-                        addComment(monitor, client, newComment, details);
+                        addComment(monitor, client, newComment, issue);
                     }
                     return new RepositoryResponse(ResponseKind.TASK_CREATED, id + "");
                 } catch (ProtocolException pe) {
                     if (pe.getCode() == ProtocolException.INVALID_STRING) {
-                        throw new CoreException(new RepositoryStatus(RepositoryStatus.ERROR, WebIssuesCorePlugin.ID_PLUGIN, pe
-                                        .getCode(), "Invalid issue summary. Maximum length of 80"));
+                        throw new CoreException(new RepositoryStatus(RepositoryStatus.ERROR, WebIssuesCorePlugin.ID_PLUGIN,
+                                        pe.getCode(), "Invalid issue summary. Maximum length of 80"));
                     } else {
                         throw pe;
                     }
                 }
             } else {
                 String newName = null;
+                int newFolderId = -1;
                 Map<Attribute, String> newServerAttributeValues = new HashMap<Attribute, String>();
                 for (TaskAttribute oldAttribute : oldAttributes) {
                     TaskAttribute attribute = taskData.getRoot().getAttribute(oldAttribute.getId());
 
                     // Store the value
+                    if (oldAttribute.getId().equals(WebIssuesAttribute.PROJECT.getTaskKey())) {
+                        // Ignore the project change as the folder should have
+                        // changed too, which is the Id we need
+                    } else if (oldAttribute.getId().equals(WebIssuesAttribute.FOLDER.getTaskKey())) {
+                        newFolderId = Integer.parseInt(attribute.getValue());
+                        // Ignore the project change as the folder should have
+                        // changed too, which is the Id we need
+                    }
+
                     if (oldAttribute.getId().startsWith(WEBISSUES_ATTRIBUTE_KEY_PREFIX) && !attribute.getMetaData().isReadOnly()) {
                         String value = attribute.getValue();
                         String serverAttributeId = attribute.getId().substring(WEBISSUES_ATTRIBUTE_KEY_PREFIX.length());
@@ -497,15 +587,21 @@ public class WebIssuesTaskDataHandler extends AbstractTaskDataHandler {
                         newServerAttributeValues.put(key, attribute.getValue());
                     }
                 }
+                int issueId = Integer.parseInt(taskData.getTaskId());
+
+                // Move the issue first if need be
+                if (newFolderId != -1) {
+                    client.moveIssue(issueId, newFolderId, monitor);
+                }
 
                 // Update issue
-                client.updateIssue(Integer.parseInt(taskData.getTaskId()), newName, newServerAttributeValues, monitor);
+                client.updateIssue(issueId, newName, newServerAttributeValues, monitor);
 
                 // Add a comment if needed
                 String newComment = getNewComment(taskData);
                 if (!Util.isNullOrBlank(newComment)) {
-                    IssueDetails details = client.getIssueDetails(Integer.parseInt(taskData.getTaskId()), monitor);
-                    addComment(monitor, client, newComment, details);
+                    Issue issue = client.getIssueDetails(issueId, monitor).getIssue();
+                    addComment(monitor, client, newComment, issue);
                 }
                 return new RepositoryResponse(ResponseKind.TASK_UPDATED, taskData.getTaskId() + "");
             }
@@ -519,8 +615,8 @@ public class WebIssuesTaskDataHandler extends AbstractTaskDataHandler {
         }
     }
 
-    private void addComment(IProgressMonitor monitor, WebIssuesClient client, String newComment, IssueDetails details)
-                    throws IOException, CoreException {
+    private void addComment(IProgressMonitor monitor, WebIssuesClient client, String newComment, Issue details) throws IOException,
+                    CoreException {
         try {
             client.addComment(new Comment(details, newComment, client.getEnvironment().getOwnerUser()), monitor);
         } catch (ProtocolException pe) {
@@ -535,7 +631,7 @@ public class WebIssuesTaskDataHandler extends AbstractTaskDataHandler {
                 WebIssuesCorePlugin.ID_PLUGIN, key.getName() + " is a required attribute."));
         }
         if (!Util.isNullOrBlank(value)) {
-            if (key.getType().equals(Attribute.Type.NUMERIC)) {
+            if (key.getType().equals(Attribute.AttributeType.NUMERIC)) {
                 if (key.getDecimalPlaces() > 0) {
                     try {
                         double i = Double.parseDouble(value);
@@ -549,10 +645,13 @@ public class WebIssuesTaskDataHandler extends AbstractTaskDataHandler {
                             throw new NumberFormatException();
                         }
                     } catch (NumberFormatException nfe) {
-                        throw new CoreException(RepositoryStatus.createStatus(repository.getRepositoryUrl(), IStatus.ERROR,
-                            WebIssuesCorePlugin.ID_PLUGIN, key.getName() + " must be a floating point number between "
-                                            + key.getMinValue() + " and " + key.getMaxValue() + " with a maximum of "
-                                            + key.getDecimalPlaces() + " decimal places"));
+                        throw new CoreException(RepositoryStatus.createStatus(
+                            repository.getRepositoryUrl(),
+                            IStatus.ERROR,
+                            WebIssuesCorePlugin.ID_PLUGIN,
+                            key.getName() + " must be a floating point number between " + key.getMinValue() + " and "
+                                            + key.getMaxValue() + " with a maximum of " + key.getDecimalPlaces()
+                                            + " decimal places"));
                     }
 
                 } else {
@@ -562,13 +661,14 @@ public class WebIssuesTaskDataHandler extends AbstractTaskDataHandler {
                             throw new NumberFormatException();
                         }
                     } catch (NumberFormatException nfe) {
-                        throw new CoreException(RepositoryStatus.createStatus(repository.getRepositoryUrl(), IStatus.ERROR,
-                            WebIssuesCorePlugin.ID_PLUGIN, key.getName() + " must be an integer number between "
-                                            + key.getMinValue() + " and " + key.getMaxValue()));
+                        throw new CoreException(
+                                        RepositoryStatus.createStatus(repository.getRepositoryUrl(), IStatus.ERROR,
+                                            WebIssuesCorePlugin.ID_PLUGIN, key.getName() + " must be an integer number between "
+                                                            + key.getMinValue() + " and " + key.getMaxValue()));
                     }
                 }
             }
-            if (key.getType().equals(Attribute.Type.TEXT)) {
+            if (key.getType().equals(Attribute.AttributeType.TEXT)) {
                 if (value.length() > key.getMaxLength()) {
                     throw new CoreException(RepositoryStatus.createStatus(repository.getRepositoryUrl(), IStatus.ERROR,
                         WebIssuesCorePlugin.ID_PLUGIN, key.getName() + " exceeds the maximum length of " + key.getMaxLength()));
@@ -579,8 +679,10 @@ public class WebIssuesTaskDataHandler extends AbstractTaskDataHandler {
     }
 
     public static Folder getFolder(TaskData taskData, WebIssuesClient client) {
-        return client.getEnvironment().getProjects().getFolder(
-            Integer.parseInt(taskData.getRoot().getAttribute(WebIssuesAttribute.FOLDER.getTaskKey()).getValue()));
+        return client.getEnvironment()
+                        .getProjects()
+                        .getFolder(
+                            Integer.parseInt(taskData.getRoot().getAttribute(WebIssuesAttribute.FOLDER.getTaskKey()).getValue()));
     }
 
     private String getNewComment(TaskData taskData) {

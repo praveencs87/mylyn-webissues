@@ -2,16 +2,18 @@ package net.sf.webissues.core;
 
 import java.util.Calendar;
 
-import net.sf.webissues.api.Util;
 
 import org.eclipse.core.runtime.Assert;
 import org.eclipse.mylyn.tasks.core.IRepositoryPerson;
 import org.eclipse.mylyn.tasks.core.data.TaskAttribute;
 import org.eclipse.mylyn.tasks.core.data.TaskAttributeMapper;
 import org.eclipse.mylyn.tasks.core.data.TaskData;
+import org.webissues.api.Util;
+import org.webissues.api.AbstractChange.Type;
 
 public class WebIssuesChangeMapper {
 
+    public static final String CHANGE_TYPE = "task.change.type"; //$NON-NLS-1$
     public static final String CHANGE_USER = "task.change.user"; //$NON-NLS-1$
     public static final String CHANGE_ATTRIBUTE = "task.change.attribute"; //$NON-NLS-1$
     public static final String CHANGE_OLD_VALUE = "task.change.oldValue"; //$NON-NLS-1$
@@ -28,6 +30,7 @@ public class WebIssuesChangeMapper {
     private Calendar date;
     private String newValue;
     private String changeId;
+    private Type type;
 
     public String getChangeId() {
         return changeId;
@@ -77,6 +80,14 @@ public class WebIssuesChangeMapper {
         return date;
     }
 
+    public Type getType() {
+        return type;
+    }
+
+    public void setType(Type type) {
+        this.type = type;
+    }
+
     public static WebIssuesChangeMapper createFrom(TaskAttribute taskAttribute) {
         Assert.isNotNull(taskAttribute);
         TaskAttributeMapper mapper = taskAttribute.getTaskData().getAttributeMapper();
@@ -85,6 +96,10 @@ public class WebIssuesChangeMapper {
         TaskAttribute child = taskAttribute.getMappedAttribute(CHANGE_USER);
         if (child != null) {
             change.setUser(mapper.getRepositoryPerson(child));
+        }
+        child = taskAttribute.getMappedAttribute(CHANGE_TYPE);
+        if (child != null) {
+            change.setType(Type.valueOf(mapper.getValue(child)));
         }
         child = taskAttribute.getMappedAttribute(CHANGE_ATTRIBUTE);
         if (child != null) {
@@ -118,6 +133,11 @@ public class WebIssuesChangeMapper {
             child.getMetaData().defaults().setType(TaskAttribute.TYPE_PERSON);
             mapper.setRepositoryPerson(child, getUser());
         }
+        if (getType() != null) {
+            TaskAttribute child = taskAttribute.createMappedAttribute(CHANGE_TYPE);
+            child.getMetaData().defaults().setType(TaskAttribute.TYPE_SHORT_TEXT);
+            mapper.setValue(child, getType().name());
+        }
         if (getAttributeName() != null) {
             TaskAttribute child = taskAttribute.createMappedAttribute(CHANGE_ATTRIBUTE);
             child.getMetaData().defaults().setType(TaskAttribute.TYPE_SHORT_TEXT);
@@ -149,6 +169,9 @@ public class WebIssuesChangeMapper {
         if ((other.changeId != null && this.changeId != null) && !other.changeId.equals(this.changeId)) {
             return false;
         }
+        if ((other.type != null && this.type != null) && !other.type.equals(this.type)) {
+            return false;
+        }
         if ((other.attributeName != null && this.attributeName != null) && !(other.attributeName.equals(this.attributeName))) {
             return false;
         }
@@ -171,6 +194,9 @@ public class WebIssuesChangeMapper {
         }
         if (getAttributeName() != null) {
             taskChange.setAttributeName(getAttributeName());
+        }
+        if (getType() != null) {
+            taskChange.setType(getType());
         }
         if (getOldValue() != null) {
             taskChange.setOldValue(getOldValue());

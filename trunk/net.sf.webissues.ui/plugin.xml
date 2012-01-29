@@ -3,12 +3,12 @@
 <plugin>
    <extension
          id="net.sf.webissues.repository"
-         name="WebIssues Repository"
+         name="%plugin.name"
          point="org.eclipse.mylyn.tasks.ui.repositories">
       <connectorCore
             class="net.sf.webissues.core.WebIssuesRepositoryConnector"
             id="webissues"
-            name="WebIssues Connector Core"/>
+            name="%plugin.connector"/>
       <connectorUi
             brandingIcon="icons/eview16/webissues-icon.gif"
             class="net.sf.webissues.ui.WebIssuesConnectorUi"
@@ -27,4 +27,21 @@
             id="net.sf.webissues.ui.pageFactory">
       </pageFactory>
    </extension>
+   
+   <extension point="org.eclipse.ui.popupMenus">
+      <viewerContribution
+            id="net.sf.webissues.ui.contribution"
+            targetID="org.eclipse.mylyn.tasks.ui.views.repositories">
+            <action
+                  class="net.sf.webissues.ui.actions.ManageViewsActions"
+                  definitionId="net.sf.webissues.ui.actions.manageViews"
+                  enablesFor="1"
+                  icon="icons/eview16/all.gif"
+                  id="net.sf.webissues.ui.actions.manageViews"
+                  label="%ManageViewsAction.label"
+                  menubarPath="org.eclipse.mylyn.tasks.ui.views.repositories"
+                  tooltip="%ManageViewsAction.tooltip">
+         </action>
+         </viewerContribution>
+      </extension>
 </plugin>
