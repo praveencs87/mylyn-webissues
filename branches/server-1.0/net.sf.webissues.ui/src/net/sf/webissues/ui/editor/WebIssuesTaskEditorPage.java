@@ -68,6 +68,8 @@ public class WebIssuesTaskEditorPage extends AbstractTaskEditorPage {
             public void attributeChanged(TaskDataModelEvent evt) {
                 if (evt.getTaskAttribute().getId().equals(WebIssuesAttribute.PROJECT.getTaskKey())) {
                     try {
+                        WebIssuesCorePlugin.getDefault().getPluginPreferences()
+                                        .setValue("lastProjectUsedForNewTask", Integer.parseInt(evt.getTaskAttribute().getValue()));
                         boolean existingTask = model.getTask().getTaskKey() != null;
                         WebIssuesClient client = WebIssuesCorePlugin.getDefault().getConnector().getClientManager()
                                         .getClient(getTaskRepository(), new NullProgressMonitor());
@@ -130,7 +132,7 @@ public class WebIssuesTaskEditorPage extends AbstractTaskEditorPage {
 
     private void removePart(Set<TaskEditorPartDescriptor> descriptors, String id) {
         for (TaskEditorPartDescriptor taskEditorPartDescriptor : new ArrayList<TaskEditorPartDescriptor>(descriptors)) {
-            if (taskEditorPartDescriptor.getId().equals(id) ) {
+            if (taskEditorPartDescriptor.getId().equals(id)) {
                 descriptors.remove(taskEditorPartDescriptor);
                 break;
             }

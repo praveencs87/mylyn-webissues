@@ -249,9 +249,9 @@ public class WebIssuesClient implements CredentialsProvider, Serializable, Authe
         }
     }
 
-    public Collection<Issue> findIssues(long stamp, IProgressMonitor monitor) throws HttpException, ProtocolException, IOException {
+    public Collection<Issue> findIssues(Map<Folder, Long> stamps, IProgressMonitor monitor) throws HttpException, ProtocolException, IOException {
         try {
-            return client.findIssues(stamp, new MonitorOperationAdapter(monitor));
+            return client.findIssues(stamps, new MonitorOperationAdapter(monitor));
         } finally {
             finishOp();
         }

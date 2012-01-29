@@ -217,15 +217,29 @@ public class Environment implements Serializable, IEnvironment {
                 method.releaseConnection();
             }
 
-            if (version.compareTo(Client.PROTOCOL_VERSION) > 0) {
+            if (Util.compareVersions(version, Client.MIN_PROTOCOL_VERSION) < 0) {
                 synchronized (Client.LOG) {
                     Client.LOG.warn("******************************************");
-                    Client.LOG.warn("*   WARNING - Protocol Version Mismatch  *");
+                    Client.LOG.warn("*   WARNING - Server Protocol Too Old    *");
                     Client.LOG.warn("******************************************");
                     Client.LOG.warn("This server is using protocol version " + version);
-                    Client.LOG.warn("where as this library only supports <= " + Client.PROTOCOL_VERSION);
+                    Client.LOG.warn("where as this library only supports >= " + Client.MIN_PROTOCOL_VERSION);
                     Client.LOG.warn("You may experience problems, and it is not");
-                    Client.LOG.warn("recommended you continue");
+                    Client.LOG.warn("recommended you continue. Consider updating");
+                    Client.LOG.warn("your server.");
+                }
+            }
+            else if (Util.compareVersions(version, Client.MAX_PROTOCOL_VERSION) > 0) {
+                synchronized (Client.LOG) {
+                    Client.LOG.warn("******************************************");
+                    Client.LOG.warn("*   WARNING - Server Protocol Too New    *");
+                    Client.LOG.warn("******************************************");
+                    Client.LOG.warn("This server is using protocol version " + version);
+                    Client.LOG.warn("where as this library only supports <= " + Client.MAX_PROTOCOL_VERSION);
+                    Client.LOG.warn("You may experience problems, and it is not");
+                    Client.LOG.warn("recommended you continue. This is most ");
+                    Client.LOG.warn("likely because you are using an old version");
+                    Client.LOG.warn("of the client library.");
                 }
             }
 
@@ -288,7 +302,7 @@ public class Environment implements Serializable, IEnvironment {
                         if (response.get(0).equals("F")) {
                             features.add(response.get(1));
                         } else {
-                            Client.LOG.warn("Unexpected response \"" + response + "\"");
+                            Client.LOG.warn("Unexpected LIST FEATURES response \"" + response + "\"");
                         }
                     }
                 } finally {

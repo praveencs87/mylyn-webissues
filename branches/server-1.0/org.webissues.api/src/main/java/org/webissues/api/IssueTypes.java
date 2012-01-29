@@ -3,9 +3,11 @@ package org.webissues.api;
 import java.io.IOException;
 import java.io.Serializable;
 import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.StringTokenizer;
 
 import org.apache.commons.httpclient.HttpException;
 import org.apache.commons.httpclient.HttpMethod;
@@ -73,6 +75,24 @@ public class IssueTypes extends HashMap<Integer, IssueType> implements Serializa
                         int typeId = Integer.parseInt(response.get(1));
                         IssueType type = new IssueType(this, typeId, response.get(2));
                         typeMap.put(typeId, type);
+                    } else if (response.get(0).equals("S")) {
+                        int typeId = Integer.parseInt(response.get(1));
+                        IssueType type = typeMap.get(typeId);
+                        String op = response.get(2);
+                        if(op.equals("attribute_order")) {
+                            StringTokenizer t = new StringTokenizer(response.get(3),",");
+                            int orderIndex = 1;
+                            while(t.hasMoreTokens()) {
+                                type.get(Integer.parseInt(t.nextToken())).setOrder(orderIndex++);
+                            }
+                        }
+                        else if(op.equals("default_view")) {
+                            try {
+                                type.setDefaultViewDefinition(new ViewDefinition(null, response.get(3), type));
+                            } catch (ParseException e) {
+                                throw new IOException("Failed to parse view definition. " + e.getMessage());
+                            }
+                        }
                     } else if (response.get(0).equals("V")) {
                         int viewId = Integer.parseInt(response.get(1));
                         int typeId = Integer.parseInt(response.get(2));
@@ -91,7 +111,7 @@ public class IssueTypes extends HashMap<Integer, IssueType> implements Serializa
                             Client.LOG.error("Could not parse view definition '" + definition + "'.", e);
                         }
                     } else {
-                        Client.LOG.warn("Unexpected response \"" + response + "\"");
+                        Client.LOG.warn("Unexpected LIST TYPES response \"" + response + "\"");
                     }
                 }
                 clear();

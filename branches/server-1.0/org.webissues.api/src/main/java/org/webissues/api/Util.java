@@ -359,4 +359,16 @@ public class Util {
         }
         return names;
     }
+    
+    /**
+     * Compare versions. If  version1 is less than version two, a negative number will be returned. If version1 is 
+     * greater than version2, a positive number will be returned. If the versions are equal the zero will be returned.
+     * 
+     *  @param version1 version 1
+     *  @param version2 version 2
+     *  @return comparison
+     */
+    public static int compareVersions(String version1, String version2) {
+        return new Float(version1).compareTo(new Float(version2));
+    }
 }

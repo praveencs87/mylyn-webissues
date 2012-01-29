@@ -19,6 +19,7 @@ public class IssueType extends HashMap<Integer, Attribute> implements Serializab
     private String name;
     private final IssueTypes types;
     private Views views;
+    private ViewDefinition defaultViewDefinition;
 
     public final static int PROJECT_ATTR_ID = 2147482645;
     public final static int FOLDER_ATTR_ID = 2147482646; 
@@ -208,5 +209,25 @@ public class IssueType extends HashMap<Integer, Attribute> implements Serializab
             }
         }
         return a;
+    }
+
+    /**
+     * Set the default view definition for this issue type.
+     *  
+     * @param viewDefinition default view definition
+     */
+    public void setDefaultViewDefinition(ViewDefinition defaultViewDefinition) {
+        this.defaultViewDefinition = defaultViewDefinition;
+        
+    }
+
+    /**
+     * Get the default view definition for this issue type.
+     *  
+     * @return default view definition
+     */
+    public ViewDefinition getDefaultViewDefinition() {
+        return defaultViewDefinition;
+        
     }
 }
