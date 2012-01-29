@@ -4,11 +4,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
+import java.util.logging.Logger;
 
-import net.sf.webissues.api.Environment;
-import net.sf.webissues.api.Folder;
-import net.sf.webissues.api.User;
-import net.sf.webissues.api.Util;
 import net.sf.webissues.core.WebIssuesClient;
 import net.sf.webissues.core.WebIssuesCorePlugin;
 import net.sf.webissues.core.WebIssuesTaskDataHandler;
@@ -24,9 +21,14 @@ import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.ui.forms.widgets.FormToolkit;
+import org.webissues.api.Folder;
+import org.webissues.api.IEnvironment;
+import org.webissues.api.User;
+import org.webissues.api.Util;
 
 @SuppressWarnings("restriction")
 public class WebIssuesPersonAttributeEditor extends AbstractSelectorAttributeEditor<User> {
+    final static Logger LOG = Logger.getLogger(WebIssuesPersonAttributeEditor.class.getName());
 
     public WebIssuesPersonAttributeEditor(TaskDataModel manager, TaskAttribute taskAttribute) {
         super(manager, taskAttribute);
@@ -34,10 +36,10 @@ public class WebIssuesPersonAttributeEditor extends AbstractSelectorAttributeEdi
     }
 
     @Override
-    protected AbstractSelector<User> createPicker(TaskDataModel manager, Composite parent, Environment attributes) {
+    protected AbstractSelector<User> createPicker(TaskDataModel manager, Composite parent, IEnvironment attributes) {
         String person = getValue();
         List<User> users = null;
-        Environment environment = null;
+        IEnvironment environment = null;
         try {
             WebIssuesClient client = WebIssuesCorePlugin.getDefault().getConnector().getClientManager().getClient(
                 manager.getTaskRepository(), new NullProgressMonitor());
@@ -50,7 +52,7 @@ public class WebIssuesPersonAttributeEditor extends AbstractSelectorAttributeEdi
                 users = new ArrayList<User>(client.getEnvironment().getUsers().values());
             }
         } catch (Exception e) {
-            System.err.println("WARNING: Could not get user list.");
+            LOG.warning("Could not get user list.");
             e.printStackTrace();
             users = new ArrayList<User>();
         }
@@ -58,9 +60,9 @@ public class WebIssuesPersonAttributeEditor extends AbstractSelectorAttributeEdi
                         getTaskAttribute().getId(), true);
         userPicker.setFont(EditorUtil.TEXT_FONT);
         if (!Util.isNullOrBlank(person)) {
-            User userByLogin = attributes.getUsers().getUserByName(person);
+            User userByLogin = attributes.getUsers().getByName(person);
             if (userByLogin == null) {
-                System.err.println("*** User with login '" + person + "' does not exist");
+                LOG.severe("User with login '" + person + "' does not exist");
             } else {
                 userPicker.setItem(userByLogin);
             }

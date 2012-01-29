@@ -2,11 +2,14 @@ package net.sf.webissues.core;
 
 import java.util.Calendar;
 
+
 import org.eclipse.core.runtime.Assert;
 import org.eclipse.mylyn.tasks.core.IRepositoryPerson;
 import org.eclipse.mylyn.tasks.core.ITask;
 import org.eclipse.mylyn.tasks.core.TaskRepository;
 import org.eclipse.mylyn.tasks.core.data.TaskAttribute;
+import org.webissues.api.Change;
+import org.webissues.api.AbstractChange.Type;
 
 public class WebIssuesChange {
 
@@ -18,6 +21,7 @@ public class WebIssuesChange {
     private final ITask task;
     private final TaskAttribute taskAttribute;
     private final TaskRepository taskRepository;
+    private Type type;
 
     public WebIssuesChange(TaskRepository taskRepository, ITask task, TaskAttribute taskAttribute) {
         Assert.isNotNull(taskRepository);
@@ -30,6 +34,14 @@ public class WebIssuesChange {
 
     public IRepositoryPerson getUser() {
         return user;
+    }
+    
+    public void setType(Type type) {
+        this.type = type;
+    }
+
+    public Type getType() {
+        return type;
     }
 
     public String getAttributeName() {

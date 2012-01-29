@@ -28,8 +28,8 @@ import org.eclipse.ui.forms.widgets.Section;
 @SuppressWarnings("restriction")
 public class WebIssuesHistoryPart extends AbstractTaskEditorPart {
 
-    private final String[] historyColumns = { "User", "Attribute", "Old Value", "New Value", "Date" };
-    private final int[] attachmentsColumnWidths = { 120, 110, 160, 160, 180 };
+    private final String[] historyColumns = { "Type", "User", "Attribute", "Old Value", "New Value", "Date" };
+    private final int[] attachmentsColumnWidths = { 100, 120, 110, 160, 160, 180 };
     private List<TaskAttribute> changes;
     private boolean hasIncoming;
     private Composite historyComposite;

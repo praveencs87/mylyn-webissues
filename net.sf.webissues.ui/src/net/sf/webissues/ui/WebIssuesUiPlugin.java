@@ -22,6 +22,7 @@ public class WebIssuesUiPlugin extends AbstractUIPlugin {
         super.start(context);
         WebIssuesCorePlugin.getDefault().getConnector().setTaskRepositoryLocationFactory(new TaskRepositoryLocationUiFactory());
         TasksUi.getRepositoryManager().addListener(WebIssuesCorePlugin.getDefault().getConnector().getClientManager());
+
     }
 
     @Override

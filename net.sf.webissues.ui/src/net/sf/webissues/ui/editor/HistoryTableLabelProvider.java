@@ -28,14 +28,16 @@ public class HistoryTableLabelProvider extends ColumnLabelProvider {
         WebIssuesChange change = (WebIssuesChange) element;
         switch (columnIndex) {
             case 0:
-                return (change.getUser() != null) ? change.getUser().toString() : ""; //$NON-NLS-1$
+                return change.getType() == null ? "" : change.getType().getLabel();
             case 1:
-                return change.getAttributeName();
+                return (change.getUser() != null) ? change.getUser().toString() : ""; //$NON-NLS-1$
             case 2:
-                return change.getOldValue();
+                return change.getAttributeName();
             case 3:
-                return change.getNewValue();
+                return change.getOldValue();
             case 4:
+                return change.getNewValue();
+            case 5:
                 return dateFormat.format(change.getDate().getTime()); //$NON-NLS-1$
         }
         return "unrecognized column"; //$NON-NLS-1$

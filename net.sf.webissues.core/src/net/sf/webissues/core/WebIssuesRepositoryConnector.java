@@ -28,26 +28,23 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.StringTokenizer;
 import java.util.TimeZone;
-
-import net.sf.webissues.api.Attribute;
-import net.sf.webissues.api.Client;
-import net.sf.webissues.api.Folder;
-import net.sf.webissues.api.Issue;
-import net.sf.webissues.api.Project;
-import net.sf.webissues.api.ProtocolException;
-import net.sf.webissues.api.Util;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.apache.commons.httpclient.HttpException;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.mylyn.commons.net.Policy;
 import org.eclipse.mylyn.tasks.core.AbstractRepositoryConnector;
 import org.eclipse.mylyn.tasks.core.IRepositoryQuery;
 import org.eclipse.mylyn.tasks.core.ITask;
+import org.eclipse.mylyn.tasks.core.RepositoryStatus;
 import org.eclipse.mylyn.tasks.core.TaskRepository;
 import org.eclipse.mylyn.tasks.core.TaskRepositoryLocationFactory;
 import org.eclipse.mylyn.tasks.core.data.TaskAttribute;
@@ -55,11 +52,25 @@ import org.eclipse.mylyn.tasks.core.data.TaskData;
 import org.eclipse.mylyn.tasks.core.data.TaskDataCollector;
 import org.eclipse.mylyn.tasks.core.data.TaskMapper;
 import org.eclipse.mylyn.tasks.core.sync.ISynchronizationSession;
+import org.webissues.api.Access;
+import org.webissues.api.Attribute;
+import org.webissues.api.Client;
+import org.webissues.api.Condition;
+import org.webissues.api.Environment;
+import org.webissues.api.Folder;
+import org.webissues.api.IEnvironment;
+import org.webissues.api.Issue;
+import org.webissues.api.IssueType;
+import org.webissues.api.Project;
+import org.webissues.api.ProtocolException;
+import org.webissues.api.Util;
 
 /**
  * @author Steffen Pingel
  */
 public class WebIssuesRepositoryConnector extends AbstractRepositoryConnector {
+
+    final static Logger LOG = Logger.getLogger(WebIssuesRepositoryConnector.class.getName());
 
     private final static String CLIENT_LABEL = "WebIssues";
     public static final String TASK_KEY_UPDATE_DATE = "UpdateDate";
@@ -170,17 +181,28 @@ public class WebIssuesRepositoryConnector extends AbstractRepositoryConnector {
 
     @Override
     public String getTaskIdFromTaskUrl(String url) {
-        if (url == null) {
-            return null;
+        if (url != null) {
+            String cmdStr = "command=";
+            int index = url.indexOf(cmdStr);
+            try {
+                if (index == -1) {
+                    StringTokenizer t = new StringTokenizer(url, "?&");
+                    while (t.hasMoreTokens()) {
+                        String v = t.nextToken();
+                        if (v.startsWith("issue=")) {
+                            return v.substring(6);
+                        }
+                    }
+                    // 1.0-alpha+
+                } else {
+                    String cmd = URLDecoder.decode(url.substring(index + cmdStr.length()), "UTF-8");
+                    return cmd.substring(cmd.indexOf(' ') + 1, cmd.lastIndexOf(' '));
+                }
+            } catch (UnsupportedEncodingException e) {
+                throw new Error(e);
+            }
         }
-        String cmdStr = "command=";
-        int index = url.indexOf(cmdStr);
-        try {
-            String cmd = URLDecoder.decode(index == -1 ? null : url.substring(index + cmdStr.length()), "UTF-8");
-            return cmd.substring(cmd.indexOf(' ') + 1, cmd.lastIndexOf(' '));
-        } catch (UnsupportedEncodingException e) {
-            throw new Error(e);
-        }
+        return null;
     }
 
     @Override
@@ -194,41 +216,76 @@ public class WebIssuesRepositoryConnector extends AbstractRepositoryConnector {
 
     @Override
     public String getTaskUrl(String repositoryUrl, String taskId) {
-        try {
-            return "?command=" + URLEncoder.encode("GET DETAILS " + taskId + " 0", "UTF-8");
-        } catch (UnsupportedEncodingException e) {
-            throw new Error(e);
-        }
+        // As from 1.0-alpha
+        return "client/index.php?issue=" + taskId;
+
+        // try {
+        // }
+        // catch(Exception e1) {
+        // // Assume old format
+        // try {
+        // return "?command=" + URLEncoder.encode("GET DETAILS " + taskId +
+        // " 0", "UTF-8");
+        // } catch (UnsupportedEncodingException e) {
+        // throw new Error(e);
+        // }
+        // }
     }
 
     @Override
     public IStatus performQuery(TaskRepository repository, IRepositoryQuery query, TaskDataCollector resultCollector,
                                 ISynchronizationSession session, IProgressMonitor monitor) {
+        List<Throwable> errors = new ArrayList<Throwable>();
+        monitor.beginTask("Querying repository", IProgressMonitor.UNKNOWN);
         try {
-            monitor.beginTask("Querying repository", IProgressMonitor.UNKNOWN);
             WebIssuesClient client;
-            client = getClientManager().getClient(repository, monitor);
-            WebIssuesFilterQueryAdapter search = new WebIssuesFilterQueryAdapter(query, client.getEnvironment());
             Map<String, ITask> taskById = null;
+            int queries = 0;
+            try {
+                client = getClientManager().getClient(repository, monitor);
+            } catch (IOException ioe) {
+                LOG.log(Level.SEVERE, "IO Error.", ioe);
+                return WebIssuesCorePlugin.toStatus(ioe, repository);
+            } catch (ProtocolException e) {
+                LOG.log(Level.SEVERE, "Protocol Error.", e);
+                return WebIssuesCorePlugin.toStatus(e, repository);
+            }
+
+            // Let the query run on each project, only reporting errors at the
+            // end
             for (Project project : client.getEnvironment().getProjects().values()) {
                 for (Folder folder : project.values()) {
-                    if (folder.getType().equals(search.getType())) {
-                        taskById = doFolder(repository, resultCollector, session, monitor, client, search, taskById, folder);
-                    } else {
-                        System.out.println("    " + folder + " is not of type " + search.getType());
+                    try {
+                        queries++;
+                        WebIssuesFilterQueryAdapter search = new WebIssuesFilterQueryAdapter(query, client.getEnvironment());
+                        if (folder.getType().equals(search.getType())) {
+                            taskById = doFolder(repository, resultCollector, session, monitor, client, search, taskById, folder);
+                        } else {
+                            LOG.warning("    " + folder + " is not of type " + search.getType());
+                        }
+                    } catch (IOException ioe) {
+                        LOG.log(Level.SEVERE, "IO Error.", ioe);
+                        return WebIssuesCorePlugin.toStatus(ioe, repository);
+                    } catch (ProtocolException e) {
+                        LOG.log(Level.SEVERE, "Protocol Error.", e);
+                        errors.add(e);
+                    } catch (CoreException e) {
+                        LOG.log(Level.SEVERE, "Core Error.", e);
+                        errors.add(e);
                     }
                 }
             }
-            return Status.OK_STATUS;
-        } catch (IOException ioe) {
-            ioe.printStackTrace();
-            return WebIssuesCorePlugin.toStatus(ioe, repository);
-        } catch (CoreException e) {
-            e.printStackTrace();
-            return WebIssuesCorePlugin.toStatus(e, repository);
-        } catch (ProtocolException e) {
-            e.printStackTrace();
-            return WebIssuesCorePlugin.toStatus(e, repository);
+
+            if (errors.size() == 0) {
+                return Status.OK_STATUS;
+            } else if (errors.size() == 1) {
+                return WebIssuesCorePlugin.toStatus(errors.get(0), repository);
+            } else if (errors.size() == queries) {
+                return WebIssuesCorePlugin.toStatus(new IOException("All queries failed."), repository);
+            } else {
+                return new RepositoryStatus(repository.getRepositoryUrl(), IStatus.WARNING, WebIssuesCorePlugin.ID_PLUGIN,
+                                RepositoryStatus.ERROR_REPOSITORY, errors.size() + " out of " + queries + " failed.");
+            }
         } finally {
             monitor.done();
         }
@@ -239,46 +296,45 @@ public class WebIssuesRepositoryConnector extends AbstractRepositoryConnector {
                                         WebIssuesFilterQueryAdapter search, Map<String, ITask> taskById, Folder folder)
                     throws HttpException, IOException, ProtocolException, CoreException {
         Collection<? extends Issue> folderIssues = client.getFolderIssues(folder, 0, monitor);
-        System.out.println("Folder " + folder + " has + " + folderIssues.size() + " issues");
         for (Issue issue : folderIssues) {
             boolean matches = true;
-            for (WebIssuesFilterCondition condition : search.getConditions()) {
+            for (Condition condition : search.getAllConditions()) {
                 String val = condition.getValue();
-                String name = condition.getName();
-                if (name.equals(WebIssuesFilterCondition.PROJECT)) {
-                    matches = match(issue, matches, condition, val, issue.getFolder().getProject().getName());
-                } else if (name.equals(WebIssuesFilterCondition.FOLDER)) {
-                    matches = match(issue, matches, condition, val, issue.getFolder().getName());
-                } else if (name.equals(WebIssuesFilterCondition.NAME)) {
-                    matches = match(issue, matches, condition, val, issue.getName());
-                } else if (name.equals(WebIssuesFilterCondition.DATE_CREATED)) {
-                    matches = match(issue, matches, condition, val, String
-                                    .valueOf((issue.getCreatedDate().getTimeInMillis() / 1000)));
-                } else if (name.equals(WebIssuesFilterCondition.DATE_MODIFIED)) {
-                    matches = match(issue, matches, condition, val, String
-                                    .valueOf((issue.getModifiedDate().getTimeInMillis() / 1000)));
-                } else if (name.equals(WebIssuesFilterCondition.USER_CREATED)) {
-                    matches = match(issue, matches, condition, val, issue.getCreatedUser().getLogin());
-                } else if (name.equals(WebIssuesFilterCondition.USER_MODIFIED)) {
-                    matches = match(issue, matches, condition, val, issue.getModifiedUser().getLogin());
-                } else {
-                    Attribute key = search.getType().getByName(name);
-                    if (key == null) {
-                        System.err.println("No attribute '" + name + "'");
-                    } else {
-                        String issueAttributeValue = Util.nonNull(issue.get(key));
-                        try {
-                            if (key.getType().equals(Attribute.Type.DATETIME)) {
-                                issueAttributeValue = getDateValue(key.isDateOnly(), issueAttributeValue);
-                            }
-                            matches = match(issue, matches, condition, val, issueAttributeValue);
-                        } catch (ParseException e) {
-                            matches = false;
-                        }
+                Attribute attr = condition.getAttribute();
+                try {
+                    String issueAttributeValue = null;
+                    switch (attr.getId()) {
+                        case IssueType.PROJECT_ATTR_ID:
+                            issueAttributeValue = issue.getFolder().getProject().getName();
+                            break;
+                        case IssueType.FOLDER_ATTR_ID:
+                            issueAttributeValue = issue.getFolder().getName();
+                            break;
+                        case IssueType.NAME_ATTR_ID:
+                            issueAttributeValue = issue.getName();
+                            break;
+                        case IssueType.CREATED_DATE_ATTR_ID:
+                            issueAttributeValue = String.valueOf((issue.getCreatedDate().getTimeInMillis() / 1000));
+                            break;
+                        case IssueType.MODIFIED_DATE_ATTR_ID:
+                            issueAttributeValue = String.valueOf((issue.getModifiedDate().getTimeInMillis() / 1000));
+                            break;
+                        case IssueType.CREATED_BY_ATTR_ID:
+                            issueAttributeValue = issue.getCreatedUser().getLogin();
+                            break;
+                        case IssueType.MODIFIED_BY_ATTR_ID:
+                            issueAttributeValue = issue.getCreatedUser().getLogin();
+                            break;
+                        default:
+                            issueAttributeValue = issue.get(attr);
                     }
-                    if (condition.isNegate()) {
-                        matches = !matches;
+                    if (issueAttributeValue == null) {
+                        issueAttributeValue = "";
                     }
+                    matches = match(issue, matches, condition, val, issueAttributeValue);
+                } catch (NumberFormatException nfe) {
+                    nfe.printStackTrace(System.out);
+                    matches = false;
                 }
                 if (!matches) {
                     break;
@@ -286,7 +342,6 @@ public class WebIssuesRepositoryConnector extends AbstractRepositoryConnector {
             }
 
             if (matches) {
-                System.out.println("    " + issue.getId() + " matches");
                 TaskData taskData = taskDataHandler.createTaskDataFromIssue(client, repository, issue, monitor);
                 taskData.setPartial(true);
 
@@ -303,8 +358,6 @@ public class WebIssuesRepositoryConnector extends AbstractRepositoryConnector {
                     }
                 }
                 resultCollector.accept(taskData);
-            } else {
-                System.out.println("    " + issue.getId() + " does not match");
             }
         }
         return taskById;
@@ -315,56 +368,74 @@ public class WebIssuesRepositoryConnector extends AbstractRepositoryConnector {
         return String.valueOf(fmt.parse(issueAttributeValue).getTime() / 1000);
     }
 
-    private boolean match(Issue issue, boolean matches, WebIssuesFilterCondition condition, String val, String issueAttributeValue) {
+    private boolean match(Issue issue, boolean matches, Condition condition, String val, String issueAttributeValue) {
+        val = val.toLowerCase();
+        issueAttributeValue = issueAttributeValue.toLowerCase();
         switch (condition.getType()) {
-            case IS_EMPTY:
-                matches = Util.isNullOrBlank(issueAttributeValue);
-            case IS_EQUAL_TO:
+            case BEG:
+                matches = issueAttributeValue.startsWith(val);
+                break;
+            case END:
+                matches = issueAttributeValue.endsWith(val);
+                break;
+            case CON:
+                matches = issueAttributeValue.contains(val);
+                break;
+            case EQ:
                 matches = issueAttributeValue.equals(val);
                 break;
-            case IS_IN:
-                if (val.indexOf("-") != -1) {
-                    // Range
-                    String[] args = val.split("-");
-                    double start = Double.parseDouble(args[0]);
-                    double end = Double.parseDouble(args[1]);
-                    try {
-                        double thisVal = Double.parseDouble(issueAttributeValue);
-                        matches = thisVal >= start && thisVal <= end;
-                    } catch (NumberFormatException nfe) {
-                        matches = false;
-                    }
-                } else {
-                    // Enum
-                    matches = Arrays.asList(val.split(":")).contains(issueAttributeValue);
-                }
+            case NEQ:
+                matches = !issueAttributeValue.equals(val);
+                break;
+            case GT:
+                matches = parseDouble(issueAttributeValue, condition) > parseDouble(val, condition);
+                break;
+            case GTE:
+                matches = parseDouble(issueAttributeValue, condition) >= parseDouble(val, condition);
+                break;
+            case LT:
+                matches = parseDouble(issueAttributeValue, condition) > parseDouble(val, condition);
+                break;
+            case LTE:
+                matches = parseDouble(issueAttributeValue, condition) >= parseDouble(val, condition);
+                break;
+            case IN:
+                matches = Arrays.asList(val.split(":")).contains(issueAttributeValue);
+                break;
         }
         return matches;
     }
 
-    @Override
-    public void postSynchronization(ISynchronizationSession event, IProgressMonitor monitor) throws CoreException {
-//        try {
-//            monitor.beginTask("", 1);
-//            if ((Util.isNullOrBlank(event.getTaskRepository().getSynchronizationTimeStamp()) || event.isFullSynchronization())
-//                            && event.getStatus() == null) {
-//                event.getTaskRepository().setSynchronizationTimeStamp(getSynchronizationStamp(event));
-//            }
-//        } finally {
-//            monitor.done();
-//        }
+    private double parseDouble(String val, Condition condition) {
+        return Double.parseDouble(val);
     }
 
-//    private String getSynchronizationStamp(ISynchronizationSession event) {
-//        Calendar mostRecent = Util.parseDateTimeToCalendar(event.getTaskRepository().getSynchronizationTimeStamp());
-//        for (ITask task : event.getChangedTasks()) {
-//            Calendar taskModifiedDate = Util.toCalendar(task.getModificationDate());
-//            if (taskModifiedDate != null && taskModifiedDate.after(mostRecent)) {
-//                mostRecent = taskModifiedDate;
-//            }
-//        }
-//        return mostRecent == null ? Calendar.getInstance() : mostRecent;
-//    }
+    @Override
+    public void postSynchronization(ISynchronizationSession event, IProgressMonitor monitor) throws CoreException {
+        // try {
+        // monitor.beginTask("", 1);
+        // if
+        // ((Util.isNullOrBlank(event.getTaskRepository().getSynchronizationTimeStamp())
+        // || event.isFullSynchronization())
+        // && event.getStatus() == null) {
+        // event.getTaskRepository().setSynchronizationTimeStamp(getSynchronizationStamp(event));
+        // }
+        // } finally {
+        // monitor.done();
+        // }
+    }
+
+    // private String getSynchronizationStamp(ISynchronizationSession event) {
+    // Calendar mostRecent =
+    // Util.parseDateTimeToCalendar(event.getTaskRepository().getSynchronizationTimeStamp());
+    // for (ITask task : event.getChangedTasks()) {
+    // Calendar taskModifiedDate = Util.toCalendar(task.getModificationDate());
+    // if (taskModifiedDate != null && taskModifiedDate.after(mostRecent)) {
+    // mostRecent = taskModifiedDate;
+    // }
+    // }
+    // return mostRecent == null ? Calendar.getInstance() : mostRecent;
+    // }
 
     @Override
     public void preSynchronization(ISynchronizationSession session, IProgressMonitor monitor) throws CoreException {
@@ -377,25 +448,19 @@ public class WebIssuesRepositoryConnector extends AbstractRepositoryConnector {
 
         TaskRepository repository = session.getTaskRepository();
         try {
-            Calendar now = Calendar.getInstance(TimeZone.getTimeZone(repository.getTimeZoneId()));
             String synchronizationStamp = repository.getSynchronizationTimeStamp();
-            System.out.println("Last sync stamp " + synchronizationStamp);
+            LOG.info("Last sync stamp " + synchronizationStamp);
             if (Util.isNullOrBlank(synchronizationStamp)) {
                 for (ITask task : session.getTasks()) {
                     session.markStale(task);
                 }
-                repository.setSynchronizationTimeStamp("0");
-                return;
+                synchronizationStamp = null;
             }
 
             WebIssuesClient client = getClientManager().getClient(repository, monitor);
-            long stampValue = 0;
-            try {
-                stampValue = Long.parseLong(synchronizationStamp);
-            } catch(NumberFormatException nfe) {
-                System.err.println("WARNING: Invalid stamp vale of " + synchronizationStamp + ", defaulting to 0");
-            }
-            List<Issue> issues = new ArrayList<Issue>(client.findIssues(stampValue, monitor));
+            client.updateAttributes(monitor, false);
+            Map<Folder, Long> stamps = synchStringToStamps(client.getEnvironment(), synchronizationStamp);
+            List<Issue> issues = new ArrayList<Issue>(client.findIssues(stamps, monitor));
             if (issues.isEmpty()) {
                 // repository is unchanged
                 session.setNeedsPerformQueries(false);
@@ -408,11 +473,10 @@ public class WebIssuesRepositoryConnector extends AbstractRepositoryConnector {
                 taskById.put(task.getTaskId(), task);
             }
 
-            // 
+            //
             boolean stale = false;
             for (Issue issue : issues) {
                 ITask task = taskById.get(String.valueOf(issue.getId()));
-                stampValue = Math.max(stampValue, issue.getStamp());
                 if (task != null) {
                     if (issue.getModifiedDate() == null || issue.getModifiedDate().getTime().after(task.getModificationDate())) {
                         stale = true;
@@ -421,8 +485,15 @@ public class WebIssuesRepositoryConnector extends AbstractRepositoryConnector {
                 }
             }
 
-            System.out.println("Setting sync stamp to " + stampValue);
-            repository.setSynchronizationTimeStamp(String.valueOf(stampValue));
+            // Update the stamps for all the folders. We already refreshed
+            // before synching, so they should be up-to-date enough
+            for (Folder folder : stamps.keySet()) {
+                stamps.put(folder, Long.valueOf(folder.getStamp()));
+            }
+
+            synchronizationStamp = stampsToSyncString(stamps);
+            LOG.info("Setting sync stamp to " + synchronizationStamp);
+            repository.setSynchronizationTimeStamp(synchronizationStamp);
             if (!stale) {
                 session.setNeedsPerformQueries(false);
             }
@@ -458,6 +529,7 @@ public class WebIssuesRepositoryConnector extends AbstractRepositoryConnector {
     public void updateRepositoryConfiguration(TaskRepository repository, IProgressMonitor monitor) throws CoreException {
         try {
             WebIssuesClient client = getClientManager().getClient(repository, monitor);
+            repository.setProperty("protocolVersion", client.getEnvironment().getVersion());
             client.updateAttributes(monitor, true);
         } catch (Exception e) {
             throw new CoreException(WebIssuesCorePlugin.toStatus(e, repository));
@@ -469,13 +541,43 @@ public class WebIssuesRepositoryConnector extends AbstractRepositoryConnector {
         TaskMapper mapper = getTaskMapping(taskData);
         mapper.applyTo(task);
         try {
-            task.setUrl(Util.concatenateUri(taskRepository.getRepositoryUrl(), "?" + "command="
-                            + URLEncoder.encode("GET DETAILS " + task.getTaskId() + " 0", "UTF-8")));
+            String pv = taskRepository.getProperty("protocolVersion");
+            if (pv != null && pv.startsWith("0.")) {
+                task.setUrl(Util.concatenateUri(taskRepository.getRepositoryUrl(),
+                    "?" + "command=" + URLEncoder.encode("GET DETAILS " + task.getTaskId() + " 0", "UTF-8")));
+            } else {
+                task.setUrl(Util.concatenateUri(taskRepository.getRepositoryUrl(), "/client/index.php?issue=" + task.getTaskId()));
+            }
             Date date = task.getModificationDate();
             task.setAttribute(TASK_KEY_UPDATE_DATE, (date != null) ? Util.formatTimestamp(date) + "" : null);
         } catch (Exception e) {
             throw new Error(e);
         }
+    }
+
+    @Override
+    public boolean canDeleteTask(TaskRepository repository, ITask task) {
+        try {
+            WebIssuesClient client = getClientManager().getClient(repository, new NullProgressMonitor());
+            if (client.getEnvironment().getOwnerUser().getAccess().equals(Access.ADMIN)) {
+                return true;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    @Override
+    public IStatus deleteTask(TaskRepository repository, ITask task, IProgressMonitor monitor) throws CoreException {
+        try {
+            WebIssuesClient client = getClientManager().getClient(repository, monitor);
+            client.deleteTask(task, monitor);
+        } catch (Exception e) {
+            Status status = new Status(IStatus.ERROR, WebIssuesCorePlugin.ID_PLUGIN, e.getLocalizedMessage(), e);
+            throw new CoreException(status);
+        }
+        return Status.OK_STATUS;
     }
 
     @Override
@@ -498,6 +600,51 @@ public class WebIssuesRepositoryConnector extends AbstractRepositoryConnector {
 
     public TaskMapper getTaskMapping(TaskData taskData) {
         return new WebIssuesTaskMapper(taskData);
+    }
+
+    public static String stampsToSyncString(Map<Folder, Long> stamps) {
+        StringBuilder bui = new StringBuilder();
+        for (Map.Entry<Folder, Long> entry : stamps.entrySet()) {
+            if (bui.length() > 0) {
+                bui.append(",");
+            }
+            bui.append(entry.getKey().getProject().getId());
+            bui.append("/");
+            bui.append(entry.getKey().getId());
+            bui.append("=");
+            bui.append(entry.getValue());
+        }
+        return bui.toString();
+    }
+
+    public static Map<Folder, Long> synchStringToStamps(IEnvironment env, String syncString) {
+        if (syncString != null) {
+            try {
+                Map<Folder, Long> stamps = new HashMap<Folder, Long>();
+                for (String stamp : syncString.split(",")) {
+                    String[] vals = stamp.split("=");
+                    String[] fVals = vals[0].split("/");
+                    int projectId = Integer.parseInt(fVals[0]);
+                    Project project = env.getProjects().get(projectId);
+                    if (project == null) {
+                        System.err.println("Missing project " + projectId);
+                    } else {
+                        int folderId = Integer.parseInt(fVals[1]);
+                        Folder folder = project.get(folderId);
+                        if (folder == null) {
+                            System.err.println("Missing folder " + folderId);
+                        } else {
+                            stamps.put(folder, Long.parseLong(vals[1]));
+                        }
+                    }
+                }
+                return stamps;
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        return new HashMap<Folder, Long>();
+
     }
 
 }

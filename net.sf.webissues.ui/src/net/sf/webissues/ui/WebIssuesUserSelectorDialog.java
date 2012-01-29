@@ -6,8 +6,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
-import net.sf.webissues.api.User;
-import net.sf.webissues.api.Access;
 
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
@@ -24,6 +22,8 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.dialogs.ElementListSelectionDialog;
 import org.eclipse.ui.dialogs.FilteredList;
 import org.eclipse.ui.dialogs.ISelectionStatusValidator;
+import org.webissues.api.Access;
+import org.webissues.api.User;
 
 public class WebIssuesUserSelectorDialog extends ElementListSelectionDialog {
     private boolean multipleSelection;
@@ -48,7 +48,7 @@ public class WebIssuesUserSelectorDialog extends ElementListSelectionDialog {
         setTitles();
         List<User> owners = new ArrayList<User>(users);
         if (includeAnyone) {
-            anyone = new User("", "All", Access.NONE);
+            anyone = new User(me.getEnvironment(), "", "All", Access.NONE);
             owners.add(0, anyone);
         }
         setElements(owners.toArray(new User[0]));
