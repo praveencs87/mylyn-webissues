@@ -118,7 +118,7 @@ public class User extends HashMap<Integer, ProjectMembership> implements NamedEn
                             try {
                                 for (List<String> response : client.readResponse(method.getResponseBodyAsStream())) {
                                     if (!response.get(0).equals("OK")) {
-                                        throw new IOException("Unexpected response.");
+                                        throw new IOException("Unexpected SET PREFERENCE response.");
                                     } else {
                                         Client.LOG.warn("Unexpected response \"" + response + "\"");
                                     }
@@ -154,7 +154,7 @@ public class User extends HashMap<Integer, ProjectMembership> implements NamedEn
                     preferences.put(response.get(1), response.get(2));
                     currentPreferences.put(response.get(1), response.get(2));
                 } else {
-                    Client.LOG.warn("Unexpected response \"" + response + "\"");
+                    Client.LOG.warn("Unexpected LIST PREFERENCES response \"" + response + "\"");
                 }
             }
         } finally {

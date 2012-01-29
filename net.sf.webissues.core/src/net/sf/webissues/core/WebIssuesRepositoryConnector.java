@@ -33,7 +33,6 @@ import java.util.TimeZone;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-
 import org.apache.commons.httpclient.HttpException;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
@@ -57,7 +56,9 @@ import org.webissues.api.Access;
 import org.webissues.api.Attribute;
 import org.webissues.api.Client;
 import org.webissues.api.Condition;
+import org.webissues.api.Environment;
 import org.webissues.api.Folder;
+import org.webissues.api.IEnvironment;
 import org.webissues.api.Issue;
 import org.webissues.api.IssueType;
 import org.webissues.api.Project;
@@ -447,25 +448,19 @@ public class WebIssuesRepositoryConnector extends AbstractRepositoryConnector {
 
         TaskRepository repository = session.getTaskRepository();
         try {
-            Calendar now = Calendar.getInstance(TimeZone.getTimeZone(repository.getTimeZoneId()));
             String synchronizationStamp = repository.getSynchronizationTimeStamp();
-            LOG.fine("Last sync stamp " + synchronizationStamp);
+            LOG.info("Last sync stamp " + synchronizationStamp);
             if (Util.isNullOrBlank(synchronizationStamp)) {
                 for (ITask task : session.getTasks()) {
                     session.markStale(task);
                 }
-                repository.setSynchronizationTimeStamp("0");
-                return;
+                synchronizationStamp = null;
             }
 
             WebIssuesClient client = getClientManager().getClient(repository, monitor);
-            long stampValue = 0;
-            try {
-                stampValue = Long.parseLong(synchronizationStamp);
-            } catch (NumberFormatException nfe) {
-                LOG.warning("Invalid stamp vale of " + synchronizationStamp + ", defaulting to 0");
-            }
-            List<Issue> issues = new ArrayList<Issue>(client.findIssues(stampValue, monitor));
+            client.updateAttributes(monitor, false);
+            Map<Folder, Long> stamps = synchStringToStamps(client.getEnvironment(), synchronizationStamp);
+            List<Issue> issues = new ArrayList<Issue>(client.findIssues(stamps, monitor));
             if (issues.isEmpty()) {
                 // repository is unchanged
                 session.setNeedsPerformQueries(false);
@@ -482,7 +477,6 @@ public class WebIssuesRepositoryConnector extends AbstractRepositoryConnector {
             boolean stale = false;
             for (Issue issue : issues) {
                 ITask task = taskById.get(String.valueOf(issue.getId()));
-                stampValue = Math.max(stampValue, issue.getStamp());
                 if (task != null) {
                     if (issue.getModifiedDate() == null || issue.getModifiedDate().getTime().after(task.getModificationDate())) {
                         stale = true;
@@ -491,8 +485,15 @@ public class WebIssuesRepositoryConnector extends AbstractRepositoryConnector {
                 }
             }
 
-            LOG.fine("Setting sync stamp to " + stampValue);
-            repository.setSynchronizationTimeStamp(String.valueOf(stampValue));
+            // Update the stamps for all the folders. We already refreshed
+            // before synching, so they should be up-to-date enough
+            for (Folder folder : stamps.keySet()) {
+                stamps.put(folder, Long.valueOf(folder.getStamp()));
+            }
+
+            synchronizationStamp = stampsToSyncString(stamps);
+            LOG.info("Setting sync stamp to " + synchronizationStamp);
+            repository.setSynchronizationTimeStamp(synchronizationStamp);
             if (!stale) {
                 session.setNeedsPerformQueries(false);
             }
@@ -599,6 +600,51 @@ public class WebIssuesRepositoryConnector extends AbstractRepositoryConnector {
 
     public TaskMapper getTaskMapping(TaskData taskData) {
         return new WebIssuesTaskMapper(taskData);
+    }
+
+    public static String stampsToSyncString(Map<Folder, Long> stamps) {
+        StringBuilder bui = new StringBuilder();
+        for (Map.Entry<Folder, Long> entry : stamps.entrySet()) {
+            if (bui.length() > 0) {
+                bui.append(",");
+            }
+            bui.append(entry.getKey().getProject().getId());
+            bui.append("/");
+            bui.append(entry.getKey().getId());
+            bui.append("=");
+            bui.append(entry.getValue());
+        }
+        return bui.toString();
+    }
+
+    public static Map<Folder, Long> synchStringToStamps(IEnvironment env, String syncString) {
+        if (syncString != null) {
+            try {
+                Map<Folder, Long> stamps = new HashMap<Folder, Long>();
+                for (String stamp : syncString.split(",")) {
+                    String[] vals = stamp.split("=");
+                    String[] fVals = vals[0].split("/");
+                    int projectId = Integer.parseInt(fVals[0]);
+                    Project project = env.getProjects().get(projectId);
+                    if (project == null) {
+                        System.err.println("Missing project " + projectId);
+                    } else {
+                        int folderId = Integer.parseInt(fVals[1]);
+                        Folder folder = project.get(folderId);
+                        if (folder == null) {
+                            System.err.println("Missing folder " + folderId);
+                        } else {
+                            stamps.put(folder, Long.parseLong(vals[1]));
+                        }
+                    }
+                }
+                return stamps;
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        return new HashMap<Folder, Long>();
+
     }
 
 }

@@ -22,6 +22,7 @@ public class Attribute implements Entity, NamedEntity, Serializable, Comparable<
 
     // Private instance variables
     private int id;
+    private int order;
     private String name;
     private String definition;
     private IssueType type;
@@ -372,6 +373,27 @@ public class Attribute implements Entity, NamedEntity, Serializable, Comparable<
 
     public void setDateOnly(boolean dateOnly) {
         this.dateOnly = dateOnly;
+    }
+
+    /**
+     * Get a hint as to the position of this attribute within the list of attributes for the type. Only
+     * returned in server 1.0.
+     * 
+     * @return order
+     */
+    public final int getOrder() {
+        return order;
+    }
+
+
+    /**
+     * Set a hint as to the position of this attribute within the list of attributes for the type. Only
+     * returned in server 1.0.
+     * 
+     * @param order order 
+     */
+    public final void setOrder(int order) {
+        this.order = order;
     }
 
     @Override

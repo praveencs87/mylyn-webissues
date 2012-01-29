@@ -15,7 +15,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.jar.Manifest;
 
-
 import org.apache.commons.httpclient.Header;
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.HttpException;
@@ -59,13 +58,14 @@ public class Client implements Serializable {
 
     public static final String DATETIME_FORMAT = "yyyy-MM-dd HH:mm";
     public static final String DATEONLY_FORMAT = "yyyy-MM-dd";
-    
+
     public static boolean DEBUG = false;
 
     /**
-     * Protocol version
+     * Protocol versions
      */
-    public final static String PROTOCOL_VERSION = "0.7";
+    public final static String MIN_PROTOCOL_VERSION = "0.7";
+    public final static String MAX_PROTOCOL_VERSION = "1.0";
 
     static {
         DEBUG = System.getProperty("wi.debug", String.valueOf(DEBUG)).equals("true");
@@ -277,7 +277,7 @@ public class Client implements Serializable {
                             if (response.get(0).equals("ID")) {
                                 changes.add(Integer.parseInt(response.get(1)));
                             } else {
-                                LOG.warn("Unexpected response \"" + response + "\"");
+                                LOG.warn("Unexpected SET VALUE response \"" + response + "\"");
                             }
                         }
                     } catch (ProtocolException pe) {
@@ -295,12 +295,12 @@ public class Client implements Serializable {
             }
         }, operation);
     }
-    
+
     /**
      * Move this issue to another folder.
      * 
      * @throws IOException on any error
-     * @throws ProtocolException 
+     * @throws ProtocolException
      */
     public void moveIssue(final int issueId, Operation operation, final int folderId) throws IOException, ProtocolException {
         doCall(new Call<Boolean>() {
@@ -310,7 +310,7 @@ public class Client implements Serializable {
             }
         }, operation);
     }
-    
+
     /**
      * Delete an issue.
      * 
@@ -318,7 +318,7 @@ public class Client implements Serializable {
      * @param operation operation
      * 
      * @throws IOException on any error
-     * @throws ProtocolException 
+     * @throws ProtocolException
      */
     public void deleteIssue(final int issueId, Operation operation) throws IOException, ProtocolException {
         doCall(new Call<Boolean>() {
@@ -349,7 +349,7 @@ public class Client implements Serializable {
                         if (response.get(0).equals("ID")) {
                             return Integer.parseInt(response.get(1));
                         } else {
-                            LOG.warn("Unexpected response \"" + response + "\"");
+                            LOG.warn("Unexpected RENAME ISSUE response \"" + response + "\"");
                         }
                     }
                 } catch (ProtocolException pe) {
@@ -421,7 +421,12 @@ public class Client implements Serializable {
 
         return doCall(new Call<IssueDetails>() {
             public IssueDetails call() throws HttpException, IOException, ProtocolException {
-                HttpMethod method = doCommand("GET DETAILS " + issueId + " 0");
+                String command = "GET DETAILS " + issueId + " 0";
+                if(Util.compareVersions(getEnvironment().getVersion(), "1.0") >= 0) {
+                    // Mark read only
+                    command += " 0";
+                }
+                HttpMethod method = doCommand(command);
                 IssueDetails issueDetails = null;
                 Issue issue = null;
                 Map<Integer, Change> changeMap = null;
@@ -448,8 +453,7 @@ public class Client implements Serializable {
                                 if (changeMap == null) {
                                     throw new Error("Expected changes before comment");
                                 }
-                                issueDetails.getComments().add(
-                                    Comment.createFromResponse(issue, response, environment, changeMap));
+                                issueDetails.getComments().add(Comment.createFromResponse(issue, response, environment, changeMap));
                             } else {
                                 issueDetails.getComments().add(Comment.createFromResponse(issue, response, environment));
                             }
@@ -458,7 +462,8 @@ public class Client implements Serializable {
                                 throw new Error("Expected issue before attachment");
                             }
                             if (!environment.getVersion().startsWith("0.")) {
-                                // From Version 1.0, Attachments are also changes
+                                // From Version 1.0, Attachments are also
+                                // changes
                                 if (changeMap == null) {
                                     throw new Error("Expected changes before comment");
                                 }
@@ -476,11 +481,12 @@ public class Client implements Serializable {
                             }
                             Change change = Change.createFromResponse(issue, response, environment.getUsers(), environment);
                             changeMap.put(change.getId(), change);
-                            if(change.getType().equals(Type.VALUE_CHANGED) || change.getType().equals(Type.ISSUE_MOVED) ||  change.getType().equals(Type.ISSUE_RENAMED)) {
+                            if (change.getType().equals(Type.VALUE_CHANGED) || change.getType().equals(Type.ISSUE_MOVED)
+                                            || change.getType().equals(Type.ISSUE_RENAMED)) {
                                 issueDetails.getChanges().add(change);
                             }
                         } else {
-                            LOG.warn("Unexpected response \"" + response + "\"");
+                            LOG.warn("Unexpected GET DETAILS response \"" + response + "\"");
                         }
                     }
                 } finally {
@@ -527,9 +533,9 @@ public class Client implements Serializable {
      * @throws IOException on any other IO error
      * @throws ProtocolException on error return by server or protocol problem
      */
-    public int putAttachmentData(final int issueId, final String name, final String description, final InputStream inputStream, final long length,
-                                  final String contentType, Operation operation) throws HttpException, IOException,
-                    ProtocolException {
+    public int putAttachmentData(final int issueId, final String name, final String description, final InputStream inputStream,
+                                 final long length, final String contentType, Operation operation) throws HttpException,
+                    IOException, ProtocolException {
         return doCall(new Call<Integer>() {
             public Integer call() throws HttpException, IOException, ProtocolException {
                 // TODO the value of 40 was determined through trial and error.
@@ -594,14 +600,15 @@ public class Client implements Serializable {
      * time.
      * 
      * @param stamp only retrieve uses with the supplied stamp or higher. Use
-     *        zero to retrieve all issues
+     *        null to retrieve all issues for all folders
      * @param operation operation callback
      * @return list of issues
      * @throws HttpException on HTTP error
      * @throws IOException on any other IO error
      * @throws ProtocolException on error return by server or protocol problem
      */
-    public Collection<Issue> findIssues(long stamp, Operation operation) throws ProtocolException, HttpException, IOException {
+    public Collection<Issue> findIssues(Map<Folder, Long> stamps, Operation operation) throws ProtocolException, HttpException,
+                    IOException {
         checkConnectedAndOnline(operation);
         List<Issue> issues = new ArrayList<Issue>();
         Projects projects = environment.getProjects();
@@ -617,7 +624,9 @@ public class Client implements Serializable {
                         throw new ProtocolException(ProtocolException.CANCELLED);
                     }
                     operation.setName("Looking in " + folder.getName());
-                    issues.addAll(folder.getIssues(operation, stamp));
+                    issues.addAll(folder.getIssues(operation,
+                        stamps.size() == 0 ? 0 : (stamps.containsKey(folder) ? stamps.get(folder) : 0)));
+                    stamps.put(folder, Long.valueOf(folder.getStamp()));
                     operation.progressed(1);
                 }
             }
@@ -753,8 +762,7 @@ public class Client implements Serializable {
      */
 
     public static void main(String[] args) {
-        LOG.info("WebIssues Protocol Library (Version " + getVersion() + "). Supports protocol version "
-                        + PROTOCOL_VERSION);
+        LOG.info("WebIssues Protocol Library (Version " + getVersion() + "). Supports protocol version " + MIN_PROTOCOL_VERSION + " to " + MAX_PROTOCOL_VERSION);
     }
 
     public static String getVersion() {

@@ -2,7 +2,7 @@
 <feature
       id="net.sf.webissues"
       label="WebIssues Mylyn Connector"
-      version="0.15.0.qualifier"
+      version="0.16.2.qualifier"
       provider-name="Brett Smith">
 
    <description url="http://code.google.com/a/eclipselabs.org/p/mylyn-webissues/">
@@ -237,21 +237,21 @@ litigation.
          id="net.sf.webissues.core"
          download-size="0"
          install-size="0"
-         version="0.15.0.qualifier"
+         version="0.16.2.qualifier"
          unpack="false"/>
 
    <plugin
          id="net.sf.webissues.ui"
          download-size="0"
          install-size="0"
-         version="0.15.0.qualifier"
+         version="0.16.2.qualifier"
          unpack="false"/>
 
    <plugin
          id="org.webissues.api"
          download-size="0"
          install-size="0"
-         version="0.15.0.qualifier"
+         version="0.16.2.qualifier"
          unpack="false"/>
 
 </feature>

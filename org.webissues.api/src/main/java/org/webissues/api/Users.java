@@ -129,7 +129,7 @@ public class Users extends NamedEntityMap<User> implements Serializable {
                         new User(environment, userId, response.get(2), response.get(3), Access.fromValue(Integer.parseInt(response
                                         .get(4)))));
                 } else {
-                    Client.LOG.warn("Unexpected response \"" + response + "\"");
+                    Client.LOG.warn("Unexpected LIST USERS response \"" + response + "\"");
                 }
             }
             clear();

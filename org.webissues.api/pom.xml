@@ -2,7 +2,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.webissues</groupId>
 	<artifactId>org.webissues.api</artifactId>
-	<version>1.0-alpha4</version>
+	<version>1.0-alpha6</version>
 	<name>WebIssues API</name>
 	<description>WebIssues is an open source, multi-platform system for issue tracking and team collaboration. It is easy to install and use but has many capabilities and is highly customizable.
 
@@ -72,6 +72,7 @@ This library allows access to all WebIssues features provided by its HTTP based 
 				</configuration>
 			</plugin>
 		</plugins>
+		<outputDirectory>bin</outputDirectory>
 		<testOutputDirectory>test-classes</testOutputDirectory>
 	</build>
 	<distributionManagement>

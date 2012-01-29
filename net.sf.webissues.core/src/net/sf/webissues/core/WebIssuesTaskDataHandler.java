@@ -393,7 +393,8 @@ public class WebIssuesTaskDataHandler extends AbstractTaskDataHandler {
 
         boolean readOnly = existingTask;
         List<Project> projects = new ArrayList<Project>();
-        if (existingTask && !environment.getVersion().startsWith("0.")) {
+        boolean versionZero = environment.getVersion().startsWith("0.");
+        if (existingTask && !versionZero) {
             /*
              * 1.0 allows moving to a different project (i.e. folder, as long as
              * the type is the same). So ony add projects that are of the same
@@ -416,12 +417,19 @@ public class WebIssuesTaskDataHandler extends AbstractTaskDataHandler {
             projects = new ArrayList<Project>(environment.getProjects().values());
         }
         TaskAttribute projectAttr = createAttribute(data, WebIssuesAttribute.PROJECT, (Project[]) projects.toArray(new Project[0]));
+        if (!existingTask) {
+            int lastProjectId = WebIssuesCorePlugin.getDefault().getPluginPreferences().getInt("lastProjectUsedForNewTask");
+            if (lastProjectId > 0) {
+                projectAttr.setValue(String.valueOf(lastProjectId));
+            }
+        }
         projectAttr.getMetaData().setReadOnly(readOnly);
 
         TaskAttribute folderAttr = createAttribute(data, WebIssuesAttribute.FOLDER);
+        folderAttr.getMetaData().setReadOnly(!existingTask || !versionZero);
         // 1.0 allows moving to a different folder
         rebuildFolders(environment, projectAttr, data, folderAttr, issue == null ? null : issue.getFolder().getType());
-        folderAttr.getMetaData().setReadOnly(existingTask && environment.getVersion().startsWith("0."));
+        folderAttr.getMetaData().setReadOnly(existingTask && versionZero);
         if (existingTask) {
             createAttribute(data, WebIssuesAttribute.TYPE);
             createAttribute(data, WebIssuesAttribute.CREATED_BY);
@@ -469,7 +477,7 @@ public class WebIssuesTaskDataHandler extends AbstractTaskDataHandler {
             if (project != null) {
                 attr.clearOptions();
                 for (Folder folder : project.values()) {
-                    if (environment.getVersion().startsWith("0.") || folder.getType().equals(currentType)) {
+                    if (currentType == null || folder.getType().equals(currentType)) {
                         String key = String.valueOf(folder.getId());
                         attr.putOption(key, folder.getName() + " (" + folder.getType().getName() + ")");
                         if (attr.getOptions().size() == 1) {
